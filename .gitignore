@@ -1,2 +1,3 @@
 sendgrid.env
 target/
+Cargo.lock
