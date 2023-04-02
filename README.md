@@ -9,10 +9,46 @@ In a new cloud instance, run:
 ```
 export YOURDOMAIN=sendeth.org
 sudo apt update
-sudo apt install pkg-config libssl-dev
-sudo apt-get install libssl-dev
+sudo apt-get install -y pkg-config libssl-dev build-essential nginx certbot python3-certbot-nginx
+curl https://sh.rustup.rs -sSf | shs
 cargo build --release
-curl http://169.254.169.254/latest/meta-data/public-ipv4 # This IP will be the one that your DNS record points to
+ip -4 -o addr show scope global | awk '{print $4}' && ip -6 -o addr show scope global | awk '{print $4}' # Point the DNS to these raw IPs
+```
+
+### Turn on nginx
+
+````
+Configure Nginx: Create a new Nginx configuration file for your application:
+
+```bash
+sudo nano /etc/nginx/sites-available/sendeth
+````
+
+Paste the following configuration and adjust the domain name and paths accordingly:
+
+```
+server {
+    listen 80;
+    server_name sendeth.com www.sendeth.com;
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+Save and exit the file. Create a symbolic link to enable the site:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/sendeth /etc/nginx/sites-enabled/
+```
+
+Test the Nginx configuration and restart Nginx:
+
+```
+export YOURDOMAIN=sendeth.org
 sudo certbot --nginx -d $YOURDOMAIN -d www.$YOURDOMAIN
 ```
 
@@ -22,7 +58,7 @@ If there's an error, make sure your ports are open and traffic is allowed. This 
 
 Step 0 is make sure to always add your IPv4 and IPv6 addresses to A and AAAA records respectively for both @ and www in DNS settings of the domain.
 
-To do this, follow these steps:
+Then, enable inbound traffic. To do so, follow these steps:
 
 0. Log in to the AWS Management Console.
 1. Navigate to the EC2 Dashboard.
@@ -56,6 +92,7 @@ Then in AWS EC2 shell, run
 sudo ufw enable
 sudo ufw allow http
 sudo ufw allow https
+sudo ufw allow ssh
 ```
 
 Then run the certbot command again.

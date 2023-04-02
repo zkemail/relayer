@@ -55,6 +55,7 @@ struct EmailEvent {
 }
 
 async fn process_email_event(payload: Json<Vec<EmailEvent>>) -> impl IntoResponse {
+    print!("Email received! {:?}", payload);
     let re = Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc) to (.+@.+(\..+)+)").unwrap();
     for email in &*payload {
         if let Some(raw_email) = &email.dkim {
@@ -129,6 +130,7 @@ async fn send_custom_reply(to: &str, subject: &str) -> bool {
 async fn main() {
     let nonce = Arc::new(Mutex::new(AtomicUsize::new(1)));
     // Set up a tracing subscriber
+    print!("Starting webserver!");
     let subscriber = Subscriber::builder()
         .with_env_filter(EnvFilter::from_default_env())
         .finish();
@@ -145,4 +147,5 @@ async fn main() {
         .serve(app.into_make_service())
         .await
         .unwrap();
+    print!("Finished setting up webservers!");
 }
