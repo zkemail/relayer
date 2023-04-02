@@ -1,10 +1,22 @@
+pub mod js_caller;
 pub mod parse_email;
 use axum::{
+    body::Body,
     extract::{Extension, Json, Path},
+    handler::Handler,
     http::StatusCode,
+    middleware::AddExtension,
     response::IntoResponse,
+    response::Response,
     routing::post,
     Router,
+};
+use futures::future::BoxFuture;
+use futures::lock::Mutex;
+use js_caller::call_generate_inputs;
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
 };
 // use mail_auth::arc::Signature;
 use parse_email::*;
@@ -12,17 +24,21 @@ use parse_email::*;
 use dotenv::dotenv;
 // use hyper::Server;
 // use mailparse::{parse_header, MailHeaderMap};
+use async_trait::async_trait;
 use duct::cmd;
 use regex::Regex;
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
 use std::{
+    collections::hash_map::DefaultHasher,
     env,
     error::Error,
+    hash::{Hash, Hasher},
     {convert::Infallible, net::SocketAddr},
 };
-// use tower::{service_fn, ServiceBuilder};
+// use tokio::sync::Mutex;
+// use tower::{service_fn, AddExtensionLayer, ServiceBuilder};
 use tracing_subscriber::{
     fmt::{Subscriber, SubscriberBuilder},
     layer::SubscriberExt,
@@ -38,31 +54,30 @@ struct EmailEvent {
     to: Option<String>,
 }
 
-fn call_gen_input(eml: &str) -> Result<String, Box<dyn Error>> {
-    let script = format!(
-        r#"
-        const fs = require('fs');
-        const ts = require('typescript');
-        const code = fs.readFileSync('gen_input.ts', 'utf-8');
-        const compiled = ts.transpile(code);
-        const func = new Function('eml', `${{compiled}}; return gen_input(eml);`);
-        func('{}');
-        "#,
-        eml
-    );
-
-    let output = cmd!("node", "-e", script).read()?;
-    let result: Value = serde_json::from_str(&output)?;
-
-    Ok(result.as_str().unwrap().to_string())
-}
-
 async fn process_email_event(payload: Json<Vec<EmailEvent>>) -> impl IntoResponse {
     let re = Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc) to (.+@.+(\..+)+)").unwrap();
     for email in &*payload {
         if let Some(raw_email) = &email.dkim {
+            // Hash raw_email
+            let hash = {
+                let mut hasher = DefaultHasher::new();
+                raw_email.hash(&mut hasher);
+                hasher.finish()
+            };
+
             let (parsed_headers, body_bytes, key_bytes, signature_bytes) =
                 parse_external_eml(raw_email).await.unwrap();
+            print!(
+                "Parsed email with hash {:?}: {:?} {:?} {:?} {:?}",
+                hash, parsed_headers, body_bytes, key_bytes, signature_bytes
+            );
+            let value = call_generate_inputs(
+                raw_email,
+                "0x0000000000000000000000000000000000000000",
+                hash,
+            )
+            .await
+            .unwrap();
             if let (Some(to), Some(subject)) = (&email.to, &email.subject) {
                 let subject_regex = re.clone();
                 if subject_regex.is_match(subject) {
@@ -98,11 +113,21 @@ async fn send_custom_reply(to: &str, subject: &str) -> bool {
         ))
         .send()
         .await;
-    true
+    match response {
+        Ok(response) => {
+            println!("Response: {:?}", response);
+            true
+        }
+        Err(err) => {
+            println!("Error responding: {:?}", err);
+            false
+        }
+    }
 }
 
 #[tokio::main]
 async fn main() {
+    let nonce = Arc::new(Mutex::new(AtomicUsize::new(1)));
     // Set up a tracing subscriber
     let subscriber = Subscriber::builder()
         .with_env_filter(EnvFilter::from_default_env())
