@@ -76,6 +76,7 @@ dependencies = [
  "matchit",
  "memchr 2.5.0",
  "mime",
+ "multer",
  "percent-encoding",
  "pin-project-lite",
  "rustversion",
@@ -960,6 +961,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "multer"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01acbdc23469fd8fe07ab135923371d5f5a422fbf9c522158677c8eb15bc51c2"
+dependencies = [
+ "bytes",
+ "encoding_rs",
+ "futures-util",
+ "http",
+ "httparse",
+ "log",
+ "memchr 2.5.0",
+ "mime",
+ "spin 0.9.7",
+ "version_check",
+]
+
+[[package]]
 name = "native-tls"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1285,10 +1304,13 @@ dependencies = [
  "async-trait",
  "axum",
  "base64",
+ "bytes",
  "dotenv",
  "duct",
  "embed_js",
  "futures",
+ "futures-util",
+ "http",
  "hyper",
  "mail-auth",
  "regex",
@@ -1360,7 +1382,7 @@ dependencies = [
  "cc",
  "libc",
  "once_cell",
- "spin",
+ "spin 0.5.2",
  "untrusted",
  "web-sys",
  "winapi",
@@ -1593,6 +1615,12 @@ name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
+
+[[package]]
+name = "spin"
+version = "0.9.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0959fd6f767df20b231736396e4f602171e00d95205676286e79d4a4eb67bef"
 
 [[package]]
 name = "subtle"

@@ -1,31 +1,18 @@
 pub mod js_caller;
 pub mod parse_email;
+use async_trait::async_trait;
 use axum::{
-    body::Body,
-    extract::{Extension, Json, Path},
-    handler::Handler,
+    extract::{Extension, Json, Multipart, Path},
     http::StatusCode,
-    middleware::AddExtension,
     response::IntoResponse,
-    response::Response,
     routing::post,
     Router,
 };
-use futures::future::BoxFuture;
-use futures::lock::Mutex;
-use js_caller::call_generate_inputs;
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc,
-};
-// use mail_auth::arc::Signature;
-use parse_email::*;
-// use dkim::Dkim;
 use dotenv::dotenv;
-// use hyper::Server;
-// use mailparse::{parse_header, MailHeaderMap};
-use async_trait::async_trait;
 use duct::cmd;
+use futures_util::stream::StreamExt;
+use js_caller::call_generate_inputs;
+use parse_email::*;
 use regex::Regex;
 use reqwest::Client;
 use serde::Deserialize;
@@ -37,8 +24,6 @@ use std::{
     hash::{Hash, Hasher},
     {convert::Infallible, net::SocketAddr},
 };
-// use tokio::sync::Mutex;
-// use tower::{service_fn, AddExtensionLayer, ServiceBuilder};
 use tracing_subscriber::{
     fmt::{Subscriber, SubscriberBuilder},
     layer::SubscriberExt,
@@ -95,6 +80,15 @@ async fn process_email_event(payload: Json<Vec<EmailEvent>>) -> impl IntoRespons
     StatusCode::OK
 }
 
+async fn parse_email_multipart(mut multipart: Multipart) {
+    while let Some(mut field) = multipart.next_field().await.unwrap() {
+        let name = field.name().unwrap().to_string();
+        let data = field.bytes().await.unwrap();
+
+        println!("Length of `{}` is {} bytes", name, data.len());
+    }
+}
+
 async fn send_custom_reply(to: &str, subject: &str) -> bool {
     let sendgrid_api_key = env::var("SENDGRID_API_KEY").unwrap();
     let client = Client::new();
@@ -139,7 +133,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/webhook", post(process_email_event))
-        .route("/email_in", post(process_email_event))
+        .route("/email_in", post(parse_email_multipart))
         .route("/email_event", post(process_email_event));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
