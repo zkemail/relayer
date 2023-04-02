@@ -50,13 +50,19 @@ async fn process_email_event(payload: Json<Vec<EmailEvent>>) -> impl IntoRespons
                 raw_email.hash(&mut hasher);
                 hasher.finish()
             };
+            // Replace \n with single char \n to avoid parsing errors in the eml
+            let raw_email_escaped = raw_email.replace("\\n", "\n").replace("\\\"", "\"");
+
+            let re = Regex::new(r"(?m)(Content-Type:.*?)(\n)").unwrap();
+            let parsed_email = re.replace_all(&raw_email_escaped, "$1$2$2");
 
             let (parsed_headers, body_bytes, key_bytes, signature_bytes) =
-                parse_external_eml(raw_email).await.unwrap();
+                parse_external_eml(&parsed_email.to_string()).await.unwrap();
             print!(
                 "Parsed email with hash {:?}: {:?} {:?} {:?} {:?}",
                 hash, parsed_headers, body_bytes, key_bytes, signature_bytes
             );
+
             let value = call_generate_inputs(
                 raw_email,
                 "0x0000000000000000000000000000000000000000",
@@ -84,8 +90,23 @@ async fn parse_email_multipart(mut multipart: Multipart) {
     while let Some(mut field) = multipart.next_field().await.unwrap() {
         let name = field.name().unwrap().to_string();
         let data = field.bytes().await.unwrap();
+        if name == String::from("email") {
+            // Hash raw_email
+            let hash = {
+                let mut hasher = DefaultHasher::new();
+                data.hash(&mut hasher);
+                hasher.finish()
+            };
+            let raw_email = String::from_utf8(data.to_vec()).unwrap();
 
-        println!("Length of `{}` is {} bytes", name, data.len());
+            let (parsed_headers, body_bytes, key_bytes, signature_bytes) =
+                parse_external_eml(&raw_email).await.unwrap();
+            println!(
+                "Parsed email with hash {:?}: {:?} {:?} {:?} {:?}",
+                hash, parsed_headers, body_bytes, key_bytes, signature_bytes
+            );
+        }
+        println!("Content of `{}` is {:?}", name, data);
     }
 }
 

@@ -27,6 +27,8 @@ pub async fn parse_external_eml(
 
     let body_bytes = &authenticated_message.raw_message[authenticated_message.body_offset..];
     let hash = Sha256::digest(&body_bytes);
+    println!("Hashes {:?} {:?}: ", hash, signature.body_hash());
+
     #[warn(deprecated)]
     assert_eq!(
         base64::encode(hash),
