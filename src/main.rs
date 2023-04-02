@@ -139,7 +139,8 @@ async fn main() {
 
     let app = Router::new()
         .route("/webhook", post(process_email_event))
-        .route("/emailreceived", post(process_email_event));
+        .route("/email_in", post(process_email_event))
+        .route("/email_event", post(process_email_event));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     axum::Server::bind(&addr)

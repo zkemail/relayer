@@ -93,6 +93,7 @@ sudo ufw enable
 sudo ufw allow http
 sudo ufw allow https
 sudo ufw allow ssh
+sudo ufw allow 3000
 ```
 
 Then run the certbot command again.
