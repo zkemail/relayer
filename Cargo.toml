@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+[[bin]]
+name = "axum_example"
+path = "axum_example.rs"
+
 [dependencies]
 axum = "0.6.12"
 serde = { version = "1.0", features = ["derive"] }

@@ -10,7 +10,7 @@ In a new cloud instance, run:
 export YOURDOMAIN=sendeth.org
 sudo apt update
 sudo apt-get install -y pkg-config libssl-dev build-essential nginx certbot python3-certbot-nginx
-curl https://sh.rustup.rs -sSf | shs
+curl https://sh.rustup.rs -sSf | sh
 cargo build --release
 ip -4 -o addr show scope global | awk '{print $4}' && ip -6 -o addr show scope global | awk '{print $4}' # Point the DNS to these raw IPs
 ```
