@@ -128,9 +128,8 @@ async fn send_custom_reply(to: &str, subject: &str) -> bool {
 
 #[tokio::main]
 async fn main() {
-    let nonce = Arc::new(Mutex::new(AtomicUsize::new(1)));
     // Set up a tracing subscriber
-    print!("Starting webserver!");
+    println!("Starting webserver!");
     let subscriber = Subscriber::builder()
         .with_env_filter(EnvFilter::from_default_env())
         .finish();
@@ -147,5 +146,5 @@ async fn main() {
         .serve(app.into_make_service())
         .await
         .unwrap();
-    print!("Finished setting up webservers!");
+    println!("Finished setting up webservers!");
 }
