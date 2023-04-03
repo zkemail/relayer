@@ -101,11 +101,15 @@ async fn parse_email_multipart(mut multipart: Multipart) {
             };
             // let v = data.to_vec();
             let mut transformed_data = Vec::new();
+            let mut prev_byte = 0;
             for &byte in data.iter() {
                 if byte == 10 {
-                    transformed_data.push(13);
+                    if prev_byte != 13 {
+                        transformed_data.push(13);
+                    }
                 }
                 transformed_data.push(byte);
+                prev_byte = byte;
             }
 
             println!("Raw data {:?}", transformed_data.to_vec());
