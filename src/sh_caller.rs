@@ -12,13 +12,21 @@ pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
     let proof_path = format!("{}/rapidsnark_proof_{}.json", build_dir, nonce);
     let public_path = format!("{}/rapidsnark_public_{}.json", build_dir, nonce);
 
-    let status0 = Command::new("npx tsx")
+    println!(
+        "npx tsx {}/src/scripts/generate_input.ts -e ~/wallet_{}.eml -n {}",
+        zk_email_path, nonce, nonce
+    );
+
+    let status0 = Command::new("npx")
+        .arg("tsx")
         .arg(format!("{}/src/scripts/generate_input.ts", zk_email_path))
         .arg(format!("-e ~/wallet_{}.eml", nonce))
         .arg(format!("-n {}", nonce))
         .stdout(std::process::Stdio::inherit())
         .stderr(std::process::Stdio::inherit())
         .status()?;
+
+    println!("status0: {:?}", status0); // Add this line for debugging
 
     if !status0.success() {
         return Err(format!("generate_input.ts failed with status: {}", status0).into());
@@ -39,6 +47,7 @@ pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
         .stderr(std::process::Stdio::inherit())
         .status()?;
 
+    println!("status1: {:?}", status1); // Add this line for debugging
     if !status1.success() {
         return Err(format!("generate_witness.js failed with status: {}", status1).into());
     }
