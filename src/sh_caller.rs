@@ -6,7 +6,7 @@ const BUILD_DIR_PREFIX: &str = "/home/ubuntu/zk-email-verify/build/";
 
 pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
     let build_dir = format!("{}{}", BUILD_DIR_PREFIX, CIRCUIT_NAME);
-    let zk_email_path = format!("/home/ubuntu/zk_email_verify");
+    let zk_email_path = format!("/home/ubuntu/zk-email-verify");
     let input_wallet_path = format!(
         "{}/circuits/inputs/input_wallet_{}.json",
         zk_email_path, nonce
