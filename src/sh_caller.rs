@@ -6,11 +6,8 @@ const HOME: &str = "/home/ubuntu";
 
 pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
     let zk_email_path = format!("{}/zk-email-verify", HOME);
-    let build_dir = format!("{}{}", zk_email_path, "/build/");
-    let input_wallet_path = format!(
-        "{}/circuits/inputs/input_wallet_{}.json",
-        zk_email_path, nonce
-    );
+    let build_dir = format!("{}/build/{}", zk_email_path, CIRCUIT_NAME);
+    let input_wallet_path = format!("{}/input_wallet_{}.json", HOME, nonce);
     let witness_path = format!("{}/witness_{}.wtns", build_dir, nonce);
     let proof_path = format!("{}/rapidsnark_proof_{}.json", build_dir, nonce);
     let public_path = format!("{}/rapidsnark_public_{}.json", build_dir, nonce);
@@ -58,10 +55,7 @@ pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
     }
 
     let status2 = Command::new(format!("{}/rapidsnark/build/prover", HOME))
-        .arg(format!(
-            "{}/{}/{}.zkey",
-            build_dir, CIRCUIT_NAME, CIRCUIT_NAME
-        ))
+        .arg(format!("{}/{}.zkey", build_dir, CIRCUIT_NAME))
         .arg(&witness_path)
         .arg(&proof_path)
         .arg(&public_path)
