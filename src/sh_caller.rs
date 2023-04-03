@@ -2,18 +2,21 @@ use std::error::Error;
 use std::process::Command;
 
 const CIRCUIT_NAME: &str = "email";
-const BUILD_DIR_PREFIX: &str = "~/zk-email-verify/build/";
+const BUILD_DIR_PREFIX: &str = "/home/ubuntu/zk-email-verify/build/";
 
 pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
     let build_dir = format!("{}{}", BUILD_DIR_PREFIX, CIRCUIT_NAME);
-    let input_wallet_path = format!("../circuits/inputs/input_wallet_{}.json", nonce);
+    let zk_email_path = format!("/home/ubuntu/zk_email_verify");
+    let input_wallet_path = format!(
+        "{}/circuits/inputs/input_wallet_{}.json",
+        zk_email_path, nonce
+    );
     let witness_path = format!("{}/witness_{}.wtns", build_dir, nonce);
-    let zk_email_path = format!("~/zk_email_verify");
     let proof_path = format!("{}/rapidsnark_proof_{}.json", build_dir, nonce);
     let public_path = format!("{}/rapidsnark_public_{}.json", build_dir, nonce);
 
     println!(
-        "npx tsx {}/src/scripts/generate_input.ts -e ~/wallet_{}.eml -n {}",
+        "npx tsx {}/src/scripts/generate_input.ts -e /home/ubuntu/wallet_{}.eml -n {}",
         zk_email_path, nonce, nonce
     );
 
