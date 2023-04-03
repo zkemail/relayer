@@ -2,22 +2,34 @@ use std::error::Error;
 use std::process::Command;
 
 const CIRCUIT_NAME: &str = "email";
-const BUILD_DIR: &str = "~/zk-email-verify/build/" + CIRCUIT_NAME;
+const BUILD_DIR_PREFIX: &str = "~/zk-email-verify/build/";
 
-fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
+pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
+    let build_dir = format!("{}{}", BUILD_DIR_PREFIX, CIRCUIT_NAME);
     let input_wallet_path = format!("../circuits/inputs/input_wallet_{}.json", nonce);
-    let witness_path = format!("{}/witness_{}.wtns", BUILD_DIR, nonce);
-    let proof_path = format!("{}/rapidsnark_proof_{}.json", BUILD_DIR, nonce);
-    let public_path = format!("{}/rapidsnark_public_{}.json", BUILD_DIR, nonce);
+    let witness_path = format!("{}/witness_{}.wtns", build_dir, nonce);
+    let zk_email_path = format!("~/zk_email_verify");
+    let proof_path = format!("{}/rapidsnark_proof_{}.json", build_dir, nonce);
+    let public_path = format!("{}/rapidsnark_public_{}.json", build_dir, nonce);
+
+    let status0 = Command::new("npx tsx")
+        .arg(format!("{}/src/scripts/generate_input.ts", zk_email_path))
+        .arg(format!("-e ~/wallet_{}.eml", nonce))
+        .arg(format!("-n {}", nonce))
+        .status()?;
+
+    if !status0.success() {
+        return Err(format!("generate_input.ts failed with status: {}", status0).into());
+    }
 
     let status1 = Command::new("node")
         .arg(format!(
             "{}/{}_js/generate_witness.js",
-            BUILD_DIR, CIRCUIT_NAME
+            build_dir, CIRCUIT_NAME
         ))
         .arg(format!(
             "{}/{}_js/{}.wasm",
-            BUILD_DIR, CIRCUIT_NAME, CIRCUIT_NAME
+            build_dir, CIRCUIT_NAME, CIRCUIT_NAME
         ))
         .arg(&input_wallet_path)
         .arg(&witness_path)
@@ -30,7 +42,7 @@ fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
     let status2 = Command::new("~/rapidsnark/build/prover")
         .arg(format!(
             "{}/{}/{}.zkey",
-            BUILD_DIR, CIRCUIT_NAME, CIRCUIT_NAME
+            build_dir, CIRCUIT_NAME, CIRCUIT_NAME
         ))
         .arg(&witness_path)
         .arg(&proof_path)

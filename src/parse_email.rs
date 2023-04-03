@@ -1,7 +1,8 @@
 // use cfdkim::*;
 use futures::executor::block_on;
 use mail_auth::common::verify::VerifySignature;
-use mail_auth::Error;
+use std::error::Error;
+// use mail_auth::Error;
 use mail_auth::{AuthenticatedMessage, DkimResult, Resolver};
 use sha2::{self, Digest, Sha256};
 use std::env;
@@ -11,7 +12,7 @@ use trust_dns_resolver::AsyncResolver;
 
 pub async fn parse_external_eml(
     raw_email: &String,
-) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>), Error> {
+) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>), Box<dyn Error>> {
     let resolver = Resolver::new_cloudflare_tls().unwrap();
     let authenticated_message = AuthenticatedMessage::parse(raw_email.as_bytes()).unwrap();
 
@@ -83,6 +84,35 @@ async fn get_public_key(domain: &str) -> Result<String, Box<dyn std::error::Erro
     }
 
     Err("RSA public key not found.".into())
+}
+
+pub fn extract_from(email: &str) -> Result<String, Box<dyn Error>> {
+    if let Some(from_start) = email.find("From:") {
+        let from_line_start = &email[from_start..];
+        if let Some(from_end) = from_line_start.find("\r\n") {
+            let from_line = &from_line_start[..from_end];
+            let email_start = from_line.find('<');
+            let email_end = from_line.find('>');
+            if let (Some(start), Some(end)) = (email_start, email_end) {
+                let from = &from_line[start + 1..end];
+                println!("From email address: {}", from);
+                return Ok(from.to_string());
+            }
+        }
+    }
+    Err("Could not find from email address".into())
+}
+
+pub fn extract_subject(email: &str) -> Result<String, Box<dyn Error>> {
+    if let Some(subject_start) = email.find("Subject:") {
+        let subject_line_start = &email[subject_start..];
+        if let Some(subject_end) = subject_line_start.find("\r\n") {
+            let subject_line = &subject_line_start[..subject_end];
+            println!("Subject line: {}", subject_line);
+            return Ok(subject_line.to_string());
+        }
+    }
+    Err("Could not find subject".into())
 }
 
 #[tokio::main]

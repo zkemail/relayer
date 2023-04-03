@@ -17,12 +17,12 @@ pub async fn call_generate_inputs(
         r#"
         const fs = require('fs');
         const ts = require('typescript');
-        const code = fs.readFileSync('~/zk-email-verify/src/scripts/generate_inputs.ts', 'utf-8');
+        const code = fs.readFileSync('/home/ubuntu/zk-email-verify/src/scripts/generate_input.ts -e "/home/ubuntu/wallet_{}.eml"', 'utf-8');
         const compiled = ts.transpile(code);
-        const func = new Function('email_base64', 'eth_address', `return requireFromString(compiled, 'generate_inputs.ts').generate_inputs(email, eth_address, nonce);`);
+        const func = new Function('email', 'eth_address', `return requireFromString(compiled, 'generate_inputs.ts').generate_inputs(email, eth_address, nonce);`);
         func('{}', '{}', '{}');
         "#,
-        raw_email, eth_address, nonce
+        nonce, raw_email, eth_address, nonce
     );
 
     let output = Command::new("node")
