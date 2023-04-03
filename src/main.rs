@@ -171,7 +171,7 @@ async fn send_custom_reply(to: &str, subject: &str) -> bool {
         .body(format!(
             r#"{{
                 "personalizations": [{{ "to": [{{ "email": "{}" }}] }}],
-                "from": {{ "email": "noreply@example.com" }},
+                "from": {{ "email": "verify@sendeth.org" }},
                 "subject": "{}",
                 "content": [{{ "type": "text/plain", "value": "{}" }}]
             }}"#,

@@ -16,6 +16,8 @@ pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
         .arg(format!("{}/src/scripts/generate_input.ts", zk_email_path))
         .arg(format!("-e ~/wallet_{}.eml", nonce))
         .arg(format!("-n {}", nonce))
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
         .status()?;
 
     if !status0.success() {
@@ -33,6 +35,8 @@ pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
         ))
         .arg(&input_wallet_path)
         .arg(&witness_path)
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
         .status()?;
 
     if !status1.success() {
@@ -47,6 +51,8 @@ pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
         .arg(&witness_path)
         .arg(&proof_path)
         .arg(&public_path)
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
         .status()?;
 
     if !status2.success() {
