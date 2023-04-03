@@ -134,16 +134,9 @@ async fn parse_email_multipart(mut multipart: Multipart) {
             }
 
             run_commands(hash);
-            // call_generate_inputs(
-            //     &raw_email,
-            //     "0x0000000000000000000000000000000000000000",
-            //     hash,
-            // )
-            // .await
-            // .unwrap();
 
             // TODO: Swap order and do this first
-            send_custom_reply(&from, &subject).await;
+            // send_custom_reply(&from, &subject).await;
         }
         println!("Content of `{}` is {:?}", name, data);
     }
