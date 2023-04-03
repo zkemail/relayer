@@ -137,7 +137,10 @@ async fn parse_email_multipart(mut multipart: Multipart) {
                 Err(e) => println!("Error writing data to file: {}", e),
             }
 
-            run_commands(hash);
+            match run_commands(hash) {
+                Ok(_) => println!("Commands executed successfully."),
+                Err(err) => eprintln!("Error: {}", err),
+            }
 
             // TODO: Swap order and do this first
             // send_custom_reply(&from, &subject).await;
