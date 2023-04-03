@@ -23,8 +23,10 @@ pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
     let status0 = Command::new("npx")
         .arg("tsx")
         .arg(format!("{}/src/scripts/generate_input.ts", zk_email_path))
-        .arg(format!("-e /home/ubuntu/wallet_{}.eml", nonce))
-        .arg(format!("-n {}", nonce))
+        .arg("-e")
+        .arg(format!("/home/ubuntu/wallet_{}.eml", nonce))
+        .arg("-n")
+        .arg(format!("{}", nonce))
         .stdout(std::process::Stdio::inherit())
         .stderr(std::process::Stdio::inherit())
         .status()?;
