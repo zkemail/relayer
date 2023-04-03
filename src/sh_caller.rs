@@ -2,11 +2,11 @@ use std::error::Error;
 use std::process::Command;
 
 const CIRCUIT_NAME: &str = "email";
-const BUILD_DIR_PREFIX: &str = "/home/ubuntu/zk-email-verify/build/";
+const HOME: &str = "/home/ubuntu";
 
 pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
-    let build_dir = format!("{}{}", BUILD_DIR_PREFIX, CIRCUIT_NAME);
-    let zk_email_path = format!("/home/ubuntu/zk-email-verify");
+    let zk_email_path = format!("{}/zk-email-verify", HOME);
+    let build_dir = format!("{}{}", zk_email_path, "/build/");
     let input_wallet_path = format!(
         "{}/circuits/inputs/input_wallet_{}.json",
         zk_email_path, nonce
@@ -23,7 +23,7 @@ pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
     let status0 = Command::new("npx")
         .arg("tsx")
         .arg(format!("{}/src/scripts/generate_input.ts", zk_email_path))
-        .arg(format!("-e ~/wallet_{}.eml", nonce))
+        .arg(format!("-e {}/wallet_{}.eml", HOME, nonce))
         .arg(format!("-n {}", nonce))
         .stdout(std::process::Stdio::inherit())
         .stderr(std::process::Stdio::inherit())
@@ -55,7 +55,7 @@ pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
         return Err(format!("generate_witness.js failed with status: {}", status1).into());
     }
 
-    let status2 = Command::new("~/rapidsnark/build/prover")
+    let status2 = Command::new(format!("{}/rapidsnark/build/prover", HOME))
         .arg(format!(
             "{}/{}/{}.zkey",
             build_dir, CIRCUIT_NAME, CIRCUIT_NAME
