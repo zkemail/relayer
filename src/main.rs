@@ -131,7 +131,7 @@ async fn parse_email_multipart(mut multipart: Multipart) {
             let mut from = extract_from(&raw_email).unwrap();
             println!("Subject, from: {:?} {:?}", subject, from);
             // Write raw_email to ../wallet_{hash}.eml
-            let file_path = format!("../wallet_{}.eml", hash);
+            let file_path = format!("../zk-email-verify/wallet_{}.eml", hash);
             match fs::write(file_path.clone(), raw_email.clone()) {
                 Ok(_) => println!("Email data written successfully to {}", file_path),
                 Err(e) => println!("Error writing data to file: {}", e),
