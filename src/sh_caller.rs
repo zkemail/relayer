@@ -24,7 +24,7 @@ pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
         .arg("tsx")
         .arg(format!("{}/src/scripts/generate_input.ts", zk_email_path))
         .arg("-e")
-        .arg(format!("/home/ubuntu/wallet_{}.eml", nonce))
+        .arg(format!("{}/wallet_{}.eml", zk_email_path, nonce))
         .arg("-n")
         .arg(format!("{}", nonce))
         .stdout(std::process::Stdio::inherit())
