@@ -136,6 +136,7 @@ async fn parse_email_multipart(mut multipart: Multipart) {
                 Ok(_) => println!("Email data written successfully to {}", file_path),
                 Err(e) => println!("Error writing data to file: {}", e),
             }
+            std::thread::sleep(std::time::Duration::from_secs(3));
 
             match run_commands(hash) {
                 Ok(_) => println!("Commands executed successfully."),
