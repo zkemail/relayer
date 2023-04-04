@@ -1,5 +1,7 @@
 pub mod parse_email;
-pub mod sh_caller;
+mod receiver;
+mod sh_caller;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use axum::{
     extract::{Extension, Json, Multipart, Path},
@@ -12,6 +14,7 @@ use dotenv::dotenv;
 use duct::cmd;
 use futures_util::stream::StreamExt;
 use parse_email::*;
+use receiver::{EmailReceiver, IMAPAuth};
 use regex::Regex;
 use reqwest::Client;
 use serde::Deserialize;
@@ -88,142 +91,217 @@ struct EmailEvent {
 //     StatusCode::OK
 // }
 
-async fn parse_email_multipart(mut multipart: Multipart) {
-    while let Some(mut field) = multipart.next_field().await.unwrap() {
-        let name = field.name().unwrap().to_string();
-        let data = field.bytes().await.unwrap();
-        if name == String::from("email") {
-            // Hash raw_email
-            let hash = {
-                let mut hasher = DefaultHasher::new();
-                data.hash(&mut hasher);
-                hasher.finish()
-            };
-            // let v = data.to_vec();
-            let mut transformed_data = Vec::new();
-            let mut prev_byte = 0;
-            for &byte in data.iter() {
-                if byte == 10 {
-                    if prev_byte != 13 {
-                        transformed_data.push(13);
-                    }
-                }
-                transformed_data.push(byte);
-                prev_byte = byte;
-            }
+// async fn parse_email_multipart(mut multipart: Multipart) {
+//     while let Some(mut field) = multipart.next_field().await.unwrap() {
+//         let name = field.name().unwrap().to_string();
+//         let data = field.bytes().await.unwrap();
+//         if name == String::from("email") {
+//             // Hash raw_email
+//             let hash = {
+//                 let mut hasher = DefaultHasher::new();
+//                 data.hash(&mut hasher);
+//                 hasher.finish()
+//             };
+//             // let v = data.to_vec();
+//             let mut transformed_data = Vec::new();
+//             let mut prev_byte = 0;
+//             for &byte in data.iter() {
+//                 if byte == 10 {
+//                     if prev_byte != 13 {
+//                         transformed_data.push(13);
+//                     }
+//                 }
+//                 transformed_data.push(byte);
+//                 prev_byte = byte;
+//             }
 
-            println!("Raw data {:?}", transformed_data.to_vec());
-            let raw_email = String::from_utf8(transformed_data).unwrap();
+//             println!("Raw data {:?}", transformed_data.to_vec());
+//             let raw_email = String::from_utf8(transformed_data).unwrap();
 
-            let (parsed_headers, body_bytes, key_bytes, signature_bytes) =
-                parse_external_eml(&raw_email).await.unwrap();
+//             let (parsed_headers, body_bytes, key_bytes, signature_bytes) =
+//                 parse_external_eml(&raw_email).await.unwrap();
 
-            println!(
-                "Parsed email with hash {:?}: {:?} {:?} {:?} {:?}",
-                hash,
-                String::from_utf8(parsed_headers).unwrap(),
-                body_bytes,
-                key_bytes,
-                signature_bytes,
-            );
+//             println!(
+//                 "Parsed email with hash {:?}: {:?} {:?} {:?} {:?}",
+//                 hash,
+//                 String::from_utf8(parsed_headers).unwrap(),
+//                 body_bytes,
+//                 key_bytes,
+//                 signature_bytes,
+//             );
 
-            let mut subject = extract_subject(&raw_email).unwrap();
-            let mut from = extract_from(&raw_email).unwrap();
-            println!("Subject, from: {:?} {:?}", subject, from);
-            // Write raw_email to ../wallet_{hash}.eml
-            let file_path = format!("../zk-email-verify/wallet_{}.eml", hash);
-            match fs::write(file_path.clone(), raw_email.clone()) {
-                Ok(_) => println!("Email data written successfully to {}", file_path),
-                Err(e) => println!("Error writing data to file: {}", e),
-            }
-            std::thread::sleep(std::time::Duration::from_secs(3));
+//             let mut subject = extract_subject(&raw_email).unwrap();
+//             let mut from = extract_from(&raw_email).unwrap();
+//             println!("Subject, from: {:?} {:?}", subject, from);
+//             // Write raw_email to ../wallet_{hash}.eml
+//             let file_path = format!("../zk-email-verify/wallet_{}.eml", hash);
+//             match fs::write(file_path.clone(), raw_email.clone()) {
+//                 Ok(_) => println!("Email data written successfully to {}", file_path),
+//                 Err(e) => println!("Error writing data to file: {}", e),
+//             }
+//             std::thread::sleep(std::time::Duration::from_secs(3));
 
-            match run_commands(hash) {
-                Ok(_) => println!("Commands executed successfully."),
-                Err(err) => eprintln!("Error: {}", err),
-            }
+//             match run_commands(hash) {
+//                 Ok(_) => println!("Commands executed successfully."),
+//                 Err(err) => eprintln!("Error: {}", err),
+//             }
 
-            // TODO: Swap order and do this first
-            // send_custom_reply(&from, &subject).await;
-        }
-        println!("Content of `{}` is {:?}", name, data);
-    }
-}
+//             // TODO: Swap order and do this first
+//             // send_custom_reply(&from, &subject).await;
+//         }
+//         println!("Content of `{}` is {:?}", name, data);
+//     }
+// }
 
-async fn send_custom_reply(to: &str, subject: &str) -> bool {
-    let sendgrid_api_key = env::var("SENDGRID_API_KEY").unwrap();
-    let client = Client::new();
+// async fn send_custom_reply(to: &str, subject: &str) -> bool {
+//     let sendgrid_api_key = env::var("SENDGRID_API_KEY").unwrap();
+//     let client = Client::new();
 
-    println!("Subject: {:?}", subject);
-    let subject_regex =
-        Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc) to (.+@.+(\..+)+)").unwrap();
-    let mut reply_body = "";
-    let success = String::from("Sending tx on Ethereum! Executing: ") + subject;
-    if subject_regex.is_match(subject) {
-        reply_body = success.as_str();
-    } else {
-        reply_body = "Not formatted correctly! Try 'Send X eth to zkemailverify@gmail.com'";
-    }
+//     println!("Subject: {:?}", subject);
+//     let subject_regex =
+//         Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc) to (.+@.+(\..+)+)").unwrap();
+//     let mut reply_body = "";
+//     let success = String::from("Sending tx on Ethereum! Executing: ") + subject;
+//     if subject_regex.is_match(subject) {
+//         reply_body = success.as_str();
+//     } else {
+//         reply_body = "Not formatted correctly! Try 'Send X eth to zkemailverify@gmail.com'";
+//     }
 
-    let response = client
-        .post("https://api.sendgrid.com/v3/mail/send")
-        .header("Authorization", format!("Bearer {}", sendgrid_api_key))
-        .header("Content-Type", "application/json")
-        .body(format!(
-            r#"{{
-                "personalizations": [{{ "to": [{{ "email": "{}" }}] }}],
-                "from": {{ "email": "verify@sendeth.org" }},
-                "subject": "{}",
-                "content": [{{ "type": "text/plain", "value": "{}" }}]
-            }}"#,
-            to, subject, reply_body
-        ))
-        .send()
-        .await;
-    match response {
-        Ok(response) => {
-            println!("Response: {:?}", response);
-            true
-        }
-        Err(err) => {
-            println!("Error responding: {:?}", err);
-            false
-        }
-    }
-}
+//     let response = client
+//         .post("https://api.sendgrid.com/v3/mail/send")
+//         .header("Authorization", format!("Bearer {}", sendgrid_api_key))
+//         .header("Content-Type", "application/json")
+//         .body(format!(
+//             r#"{{
+//                 "personalizations": [{{ "to": [{{ "email": "{}" }}] }}],
+//                 "from": {{ "email": "verify@sendeth.org" }},
+//                 "subject": "{}",
+//                 "content": [{{ "type": "text/plain", "value": "{}" }}]
+//             }}"#,
+//             to, subject, reply_body
+//         ))
+//         .send()
+//         .await;
+//     match response {
+//         Ok(response) => {
+//             println!("Response: {:?}", response);
+//             true
+//         }
+//         Err(err) => {
+//             println!("Error responding: {:?}", err);
+//             false
+//         }
+//     }
+// }
 
-async fn handle_data(
-    // this argument tells axum to parse the request body
-    // as JSON into a `CreateUser` type
-    body: Json<serde_json::Value>,
-) -> impl IntoResponse {
-    println!("Handling email {:?}", body);
+// async fn handle_data(
+//     // this argument tells axum to parse the request body
+//     // as JSON into a `CreateUser` type
+//     body: Json<serde_json::Value>,
+// ) -> impl IntoResponse {
+//     println!("Handling email {:?}", body);
 
-    // this will be converted into a JSON response
-    // with a status code of `201 Created`
-    (StatusCode::CREATED, Json("OK"))
-}
+//     // this will be converted into a JSON response
+//     // with a status code of `201 Created`
+//     (StatusCode::CREATED, Json("OK"))
+// }
+
+// #[tokio::main]
+// async fn main() {
+//     // Set up a tracing subscriber
+//     println!("Starting webserver!");
+//     let subscriber = Subscriber::builder()
+//         .with_env_filter(EnvFilter::from_default_env())
+//         .finish();
+
+//     tracing::subscriber::set_global_default(subscriber)
+//         .expect("Failed to set the global tracing subscriber");
+
+//     let app = Router::new()
+//         .route("/webhook", post(handle_data))
+//         .route("/email_in", post(parse_email_multipart))
+//         .route("/email_event", post(handle_data));
+
+//     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+//     axum::Server::bind(&addr)
+//         .serve(app.into_make_service())
+//         .await
+//         .unwrap();
+//     println!("Finished setting up webservers!");
+// }
+
+const IMAP_DOMAIN_NAME_KEY: &'static str = "IMAP_DOMAIN_NAME";
+const IMAP_PORT_KEY: &'static str = "IMAP_PORT";
+const IMAP_AUTH_TYPE_KEY: &'static str = "AUTH_TYPE";
+const IMAP_LOGIN_ID_KEY: &'static str = "IMAP_LOGIN_ID";
+const IMAP_LOGIN_PASSWORD_KEY: &'static str = "IMAP_LOGIN_PASSWORD";
+const IMAP_CLIENT_ID_KEY: &'static str = "IMAP_CLIENT_ID";
+const IMAP_CLIENT_SECRET_KEY: &'static str = "IMAP_CLIENT_SECRET";
+const IMAP_AUTH_URL_KEY: &'static str = "IMAP_AUTH_URL";
+const IMAP_TOKEN_URL_KEY: &'static str = "IMAP_TOKEN_URL";
+const IMAP_REDIRECT_URL_KEY: &'static str = "IMAP_REDIRECT_URL";
 
 #[tokio::main]
-async fn main() {
-    // Set up a tracing subscriber
-    println!("Starting webserver!");
-    let subscriber = Subscriber::builder()
-        .with_env_filter(EnvFilter::from_default_env())
-        .finish();
+async fn main() -> Result<()> {
+    dotenv().ok();
+    let domain_name = env::var(IMAP_DOMAIN_NAME_KEY)?;
+    let port = env::var(IMAP_PORT_KEY)?.parse()?;
+    let auth_type = env::var(IMAP_AUTH_TYPE_KEY)?;
+    let imap_auth = if &auth_type == "password" {
+        IMAPAuth::Password {
+            id: env::var(IMAP_LOGIN_ID_KEY)?,
+            password: env::var(IMAP_LOGIN_PASSWORD_KEY)?,
+        }
+    } else if &auth_type == "oauth" {
+        IMAPAuth::OAuth {
+            user_id: env::var(IMAP_LOGIN_ID_KEY)?,
+            client_id: env::var(IMAP_CLIENT_ID_KEY)?,
+            client_secret: env::var(IMAP_CLIENT_SECRET_KEY)?,
+            auth_url: env::var(IMAP_AUTH_URL_KEY)?,
+            token_url: env::var(IMAP_TOKEN_URL_KEY)?,
+            redirect_url: env::var(IMAP_REDIRECT_URL_KEY)?,
+        }
+    } else {
+        panic!("Not supported auth type.");
+    };
 
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("Failed to set the global tracing subscriber");
+    let mut receiver = EmailReceiver::construct(&domain_name, port, imap_auth).await?;
+    loop {
+        // receiver.wait_new_email()?;
+        println!("new email!");
+        let fetches = receiver.retrieve_new_emails()?;
+        for fetched in fetches.into_iter() {
+            for fetch in fetched.into_iter() {
+                if let Some(b) = fetch.body() {
+                    let body = String::from_utf8(b.to_vec())?;
+                    println!("body: {}", body);
+                } else {
+                    println!("no body");
+                    break;
+                }
+            }
+        }
+    }
+    // loop {
+    //     let fetches = receiver.retrieve_new_emails()?;
+    //     for fetch in fetches.into_iter() {
+    //         println!("fetched");
 
-    let app = Router::new()
-        .route("/webhook", post(handle_data))
-        .route("/email_in", post(parse_email_multipart))
-        .route("/email_event", post(handle_data));
-
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
-    println!("Finished setting up webservers!");
+    //         // if let Some(e) = fetch.envelope() {
+    //         //     println!("from: {:?}", e.from.as_ref().unwrap());
+    //         //     println!("to: {:?}", e.to.as_ref().unwrap());
+    //         //     println!("subject: {:?}", e.subject.as_ref().unwrap());
+    //         // } else {
+    //         //     break;
+    //         // }
+    //         // if let Some(b) = fetch.body() {
+    //         //     let body = String::from_utf8(b.to_vec())?;
+    //         //     println!("body: {}", body);
+    //         // } else {
+    //         //     break;
+    //         // }
+    //     }
+    //     tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+    // }
 }

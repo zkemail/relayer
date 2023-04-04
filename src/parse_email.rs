@@ -3,13 +3,13 @@ use futures::executor::block_on;
 use mail_auth::common::verify::VerifySignature;
 use std::error::Error;
 // use mail_auth::Error;
+use anyhow::{anyhow, Result};
 use mail_auth::{AuthenticatedMessage, DkimResult, Resolver};
 use sha2::{self, Digest, Sha256};
 use std::env;
 use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
 use trust_dns_resolver::proto::rr::{RData, RecordType};
 use trust_dns_resolver::AsyncResolver;
-
 pub async fn parse_external_eml(
     raw_email: &String,
 ) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>), Box<dyn Error>> {
@@ -115,11 +115,16 @@ pub fn extract_subject(email: &str) -> Result<String, Box<dyn Error>> {
     Err("Could not find subject".into())
 }
 
-#[tokio::main]
-async fn main() {
-    let domain = "20210112._domainkey.gmail.com.";
-    match get_public_key(domain).await {
-        Ok(key) => println!("RSA public key: {}", key),
-        Err(e) => eprintln!("Error: {}", e),
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[tokio::test]
+    async fn get_public_key_test() {
+        let domain = "20210112._domainkey.gmail.com.";
+        match get_public_key(domain).await {
+            Ok(key) => println!("RSA public key: {}", key),
+            Err(e) => panic!("Error: {}", e),
+        }
     }
 }
