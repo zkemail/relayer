@@ -5,16 +5,20 @@ const CIRCUIT_NAME: &str = "email";
 const HOME: &str = "/home/ubuntu";
 
 pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
+    // These 3 need to exist
     let zk_email_path = format!("{}/zk-email-verify", HOME);
     let build_dir = format!("{}/build/{}", zk_email_path, CIRCUIT_NAME);
+    let wallet_eml_path = format!("{}/wallet_{}.eml", HOME, nonce);
+
+    // These s4 will be generated
     let input_wallet_path = format!("{}/input_wallet_{}.json", HOME, nonce);
     let witness_path = format!("{}/witness_{}.wtns", build_dir, nonce);
     let proof_path = format!("{}/rapidsnark_proof_{}.json", build_dir, nonce);
     let public_path = format!("{}/rapidsnark_public_{}.json", build_dir, nonce);
 
     println!(
-        "npx tsx {}/src/scripts/generate_input.ts -e /home/ubuntu/wallet_{}.eml -n {}",
-        zk_email_path, nonce, nonce
+        "npx tsx {}/src/scripts/generate_input.ts -e {} -n {}",
+        zk_email_path, wallet_eml_path, nonce
     );
 
     let status0 = Command::new("npx")
