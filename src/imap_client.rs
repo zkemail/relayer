@@ -104,11 +104,16 @@ impl EmailReceiver {
     }
 
     pub fn retrieve_new_emails(&mut self) -> Result<Vec<ZeroCopy<Vec<Fetch>>>> {
-        let uids = self.imap_session.uid_search("NEW")?;
+        let uids = self.imap_session.uid_search("UNSEEN")?;
         let mut fetches = vec![];
-        for uid in uids.into_iter() {
+        for (idx, uid) in uids.into_iter().enumerate() {
+            if idx >= 10 {
+                break;
+            }
             println!("uid {}", uid);
-            let fetched = self.imap_session.uid_fetch(uid.to_string(), "RFC822")?;
+            let fetched = self
+                .imap_session
+                .uid_fetch(uid.to_string(), "(BODY[] ENVELOPE)")?;
             fetches.push(fetched);
         }
         Ok(fetches)
