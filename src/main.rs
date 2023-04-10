@@ -1,5 +1,6 @@
+mod imap_client;
 pub mod parse_email;
-mod receiver;
+mod processer;
 mod sh_caller;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -13,8 +14,8 @@ use axum::{
 use dotenv::dotenv;
 use duct::cmd;
 use futures_util::stream::StreamExt;
+use imap_client::{EmailReceiver, IMAPAuth};
 use parse_email::*;
-use receiver::{EmailReceiver, IMAPAuth};
 use regex::Regex;
 use reqwest::Client;
 use serde::Deserialize;
@@ -268,11 +269,28 @@ async fn main() -> Result<()> {
 
     let mut receiver = EmailReceiver::construct(&domain_name, port, imap_auth).await?;
     loop {
-        // receiver.wait_new_email()?;
+        receiver.wait_new_email()?;
         println!("new email!");
         let fetches = receiver.retrieve_new_emails()?;
         for fetched in fetches.into_iter() {
             for fetch in fetched.into_iter() {
+                if let Some(e) = fetch.envelope() {
+                    println!(
+                        "from: {}",
+                        String::from_utf8(e.from.as_ref().unwrap()[0].name.unwrap().to_vec())
+                            .unwrap()
+                    );
+                    // println!(
+                    //     "to: {}",
+                    //     String::from_utf8(e.to.as_ref().unwrap()[0].name.unwrap().to_vec())
+                    //         .unwrap()
+                    // );
+                    let subject_str = String::from_utf8(e.subject.unwrap().to_vec()).unwrap();
+                    println!("subject: {}", subject_str);
+                } else {
+                    println!("no envelope");
+                    break;
+                }
                 if let Some(b) = fetch.body() {
                     let body = String::from_utf8(b.to_vec())?;
                     println!("body: {}", body);
@@ -282,26 +300,6 @@ async fn main() -> Result<()> {
                 }
             }
         }
+        // tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
     }
-    // loop {
-    //     let fetches = receiver.retrieve_new_emails()?;
-    //     for fetch in fetches.into_iter() {
-    //         println!("fetched");
-
-    //         // if let Some(e) = fetch.envelope() {
-    //         //     println!("from: {:?}", e.from.as_ref().unwrap());
-    //         //     println!("to: {:?}", e.to.as_ref().unwrap());
-    //         //     println!("subject: {:?}", e.subject.as_ref().unwrap());
-    //         // } else {
-    //         //     break;
-    //         // }
-    //         // if let Some(b) = fetch.body() {
-    //         //     let body = String::from_utf8(b.to_vec())?;
-    //         //     println!("body: {}", body);
-    //         // } else {
-    //         //     break;
-    //         // }
-    //     }
-    //     tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
-    // }
 }

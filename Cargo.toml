@@ -33,3 +33,5 @@ imap = "2.4.1"
 anyhow = "1.0.70"
 native-tls = "0.2.11"
 oauth2 = "4.3.0"
+cfdkim = { version = "0.2.6", git = "https://github.com/SoraSuegami/dkim.git" }
+fancy-regex = "0.11.0"
