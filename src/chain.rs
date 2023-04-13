@@ -23,7 +23,7 @@ struct CircomCalldata {
     pi_a: [U256; 2],
     pi_b: [[U256; 2]; 2],
     pi_c: [U256; 2],
-    signals: Vec<U256>,
+    signals: [U256; 34],
 }
 
 // Define a new function that takes optional arguments and provides default values
@@ -43,7 +43,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             println!("Successfully sent to chain.");
         }
         Err(err) => {
-            eprintln!("Failed to send to chain: {}", err);
+            eprintln!("Error to send to chain at {}: {}", line!(), err);
         }
     }
     Ok(())
@@ -79,7 +79,7 @@ fn parse_files_into_calldata(
         U256::from_dec_str(proof_json["pi_a"][1].as_str().unwrap()).unwrap(),
     ];
 
-    let pi_b: [[U256; 2]; 2] = [
+    let pi_b_raw: [[U256; 2]; 2] = [
         [
             U256::from_dec_str(proof_json["pi_b"][0][0].as_str().unwrap()).unwrap(),
             U256::from_dec_str(proof_json["pi_b"][0][1].as_str().unwrap()).unwrap(),
@@ -90,17 +90,26 @@ fn parse_files_into_calldata(
         ],
     ];
 
+    // Swap the G2 points to be the correct order with the new snarkjs
+    let pi_b_swapped: Vec<[U256; 2]> = pi_b_raw.iter().map(|inner| [inner[1], inner[0]]).collect();
+
+    // Convert the Vec to an array
+    let pi_b: [[U256; 2]; 2] = [pi_b_swapped[0], pi_b_swapped[1]];
+
     let pi_c: [U256; 2] = [
         U256::from_dec_str(proof_json["pi_c"][0].as_str().unwrap()).unwrap(),
         U256::from_dec_str(proof_json["pi_c"][1].as_str().unwrap()).unwrap(),
     ];
 
-    let signals: Vec<U256> = public_json
+    let signals: [U256; 34] = public_json
         .as_array()
         .unwrap()
         .iter()
         .map(|x| U256::from_dec_str(x.as_str().unwrap()).unwrap())
-        .collect();
+        .collect::<Vec<_>>()
+        .as_slice()
+        .try_into()
+        .unwrap();
 
     let calldata = CircomCalldata {
         pi_a,
@@ -132,7 +141,7 @@ async fn send_to_chain(
         std::env::var("PRIVATE_KEY").expect("The PRIVATE_KEY environment variable must be set");
     let msg_len = 26; // Update this to the appropriate length
     let rpcurl = if test {
-        "localhost:8548".to_string()
+        "http://localhost:8548".to_string()
     } else {
         format!("https://eth-goerli.alchemyapi.io/v2/{}", alchemy_api_key)
     };
@@ -146,17 +155,10 @@ async fn send_to_chain(
         LocalWallet::from_str(&private_key_hex)?
     };
 
+    println!("Wallet address: {}", wallet.address());
+
     // Read proof and public parameters from JSON files
     let calldata = get_calldata(Some(dir), Some(nonce)).unwrap();
-
-    // Define the parameters for the transfer function
-    let a: [U256; 2] = [U256::from(1), U256::from(2)];
-    let b: [[U256; 2]; 2] = [
-        [U256::from(3), U256::from(4)],
-        [U256::from(5), U256::from(6)],
-    ];
-    let c: [U256; 2] = [U256::from(7), U256::from(8)];
-    let signals: Vec<U256> = vec![U256::from(9), U256::from(10)];
 
     // Read the contents of the ABI file as bytes
     let abi_bytes = include_bytes!("../../../zk-email-verify/src/contracts/wallet.abi");
@@ -169,6 +171,8 @@ async fn send_to_chain(
 
     let contract = Contract::new(contract_address, abi, provider.into());
 
+    println!("Sending transaction...");
+
     // Call the transfer function
     let call = contract.method::<_, ()>(
         "transfer",
@@ -179,6 +183,7 @@ async fn send_to_chain(
             calldata.signals,
         ),
     )?;
+    println!("Calling contract fn: {:?}", call);
     let pending_tx = call.send().await?;
     println!("Transaction hash: {:?}", pending_tx);
 
