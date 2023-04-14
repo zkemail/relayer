@@ -121,7 +121,7 @@ fn parse_files_into_calldata(
 }
 
 // local: bool - whether or not to send to a local RPC
-async fn send_to_chain(
+pub async fn send_to_chain(
     test: bool,
     dir: &str,
     nonce: &str,

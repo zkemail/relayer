@@ -2,7 +2,8 @@ use std::error::Error;
 use std::process::Command;
 
 const CIRCUIT_NAME: &str = "email";
-const HOME: &str = "/home/ubuntu";
+// const HOME: &str = "/home/ubuntu";
+const HOME: &str = "../";
 
 pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
     // These 3 need to exist

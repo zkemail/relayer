@@ -2,6 +2,8 @@
 
 A permissionless Rust Axum webserver relayer service that reads email and responds to it. Right now we use the help of some centralized services for the MVP, but soon we will move off of them.
 
+Goerli Wallet Address (circom-only): 0x3b3857eaf44804cce00449b7fd40310e6de6496e
+
 ## Setup
 
 In a new cloud instance, run:
@@ -13,6 +15,20 @@ sudo apt-get install -y pkg-config libssl-dev build-essential nginx certbot pyth
 curl https://sh.rustup.rs -sSf | sh
 cargo build --release
 ip -4 -o addr show scope global | awk '{print $4}' && ip -6 -o addr show scope global | awk '{print $4}' # Point the DNS to these raw IPs
+```
+
+### Test chain
+
+This verifies that your connection to the chain works and simple txes will send.
+
+```
+cargo run --bin chain
+```
+
+## Run relayer
+
+```
+cargo run --bin relayer
 ```
 
 ### Turn on nginx
