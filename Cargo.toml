@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+[[bin]]
+name = "chain"
+path = "src/chain.rs"
+
 [dependencies]
 axum = { version = "0.6.12", features = ["multipart"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -35,3 +39,10 @@ native-tls = "0.2.11"
 oauth2 = "4.3.0"
 cfdkim = { version = "0.2.6", git = "https://github.com/SoraSuegami/dkim.git" }
 fancy-regex = "0.11.0"
+ethers-providers = "2.0.2"
+ethers-signers = "2.0.2"
+ethers-core = "2.0.2"
+ethers = "2.0.3"
+rand = "0.8.5"
+hex = "0.4.3"
+hex-literal = "0.4.1"
