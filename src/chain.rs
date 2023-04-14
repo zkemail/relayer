@@ -130,16 +130,11 @@ async fn send_to_chain(
     dotenv().ok();
 
     let alchemy_api_key = std::env::var("ALCHEMY_GOERLI_KEY").unwrap();
-    let contract_address: Address = if test {
-        std::env::var("CONTRACT_ADDRESS_LOCAL").unwrap().parse()?
-    } else {
-        std::env::var("CONTRACT_ADDRESS_GOERLI").unwrap().parse()?
-    };
+    let contract_address: Address = std::env::var("CONTRACT_ADDRESS").unwrap().parse()?;
 
     // Get the private key from the environment variable
     let private_key_hex =
         std::env::var("PRIVATE_KEY").expect("The PRIVATE_KEY environment variable must be set");
-    let msg_len = 26; // Update this to the appropriate length
     let rpcurl = if test {
         "http://localhost:8548".to_string()
     } else {
