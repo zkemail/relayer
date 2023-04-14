@@ -4,12 +4,8 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
-[[bin]]
-name = "axum_example"
-path = "src/axum_example.rs"
-
 [dependencies]
-axum = {version = "0.6.12", features = ["multipart"] }
+axum = { version = "0.6.12", features = ["multipart"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.68"
 tokio = { version = "1.0", features = ["full"] }
@@ -33,3 +29,9 @@ async-trait = "0.1.68"
 bytes = "1.4.0"
 http = "0.2.9"
 futures-util = "0.3.28"
+imap = "2.4.1"
+anyhow = "1.0.70"
+native-tls = "0.2.11"
+oauth2 = "4.3.0"
+cfdkim = { version = "0.2.6", git = "https://github.com/SoraSuegami/dkim.git" }
+fancy-regex = "0.11.0"
