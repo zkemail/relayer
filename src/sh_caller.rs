@@ -9,7 +9,7 @@ pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
     // These 3 need to exist
     let zk_email_path = format!("{}/zk-email-verify", HOME);
     let build_dir = format!("{}/build/{}", zk_email_path, CIRCUIT_NAME);
-    let wallet_eml_path = format!("{}/wallet_{}.eml", HOME, nonce);
+    let wallet_eml_path = format!("{}/wallet_{}.eml", zk_email_path, nonce);
 
     // These s4 will be generated
     let input_wallet_path = format!("{}/input_wallet_{}.json", HOME, nonce);
@@ -39,6 +39,7 @@ pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
         return Err(format!("generate_input.ts failed with status: {}", status0).into());
     }
 
+    // TODO: Change to C via https://hackmd.io/V-7Aal05Tiy-ozmzTGBYPA?view#Compilation-and-proving
     let status1 = Command::new("node")
         .arg(format!(
             "{}/{}_js/generate_witness.js",
@@ -53,6 +54,17 @@ pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
         .stdout(std::process::Stdio::inherit())
         .stderr(std::process::Stdio::inherit())
         .status()?;
+
+    // TODO: Use this C version instead
+    // let status1 = Command::new(format!(
+    //         "./{}/{}_cpp/{}",
+    //         build_dir, CIRCUIT_NAME, CIRCUIT_NAME
+    //     ))
+    //     .arg(&input_wallet_path)
+    //     .arg(&witness_path)
+    //     .stdout(std::process::Stdio::inherit())
+    //     .stderr(std::process::Stdio::inherit())
+    //     .status()?;
 
     println!("status1: {:?}", status1); // Add this line for debugging
     if !status1.success() {

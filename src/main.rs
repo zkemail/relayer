@@ -184,6 +184,8 @@ const IMAP_REDIRECT_URL_KEY: &'static str = "IMAP_REDIRECT_URL";
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenv().ok();
+    env_logger::init(); // Enable verbose logging
+
     let domain_name = env::var(IMAP_DOMAIN_NAME_KEY)?;
     let port = env::var(IMAP_PORT_KEY)?.parse()?;
     let auth_type = env::var(IMAP_AUTH_TYPE_KEY)?;
