@@ -156,7 +156,7 @@ async fn send_to_chain(
     let calldata = get_calldata(Some(dir), Some(nonce)).unwrap();
 
     // Read the contents of the ABI file as bytes
-    let abi_bytes = include_bytes!("../../../zk-email-verify/src/contracts/wallet.abi");
+    let abi_bytes = include_bytes!("../data/wallet.abi");
     // Convert the bytes to a string
     let abi_str = str::from_utf8(abi_bytes)?;
     // Parse the string as JSON to obtain the ABI
