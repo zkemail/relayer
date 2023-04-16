@@ -19,10 +19,13 @@ use futures_util::stream::StreamExt;
 use imap_client::{EmailReceiver, IMAPAuth};
 use parse_email::*;
 use regex::Regex;
+use reqwest;
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
 use sh_caller::run_commands;
+use std::fs::File;
+use std::io::Read;
 use std::{
     collections::hash_map::DefaultHasher,
     env,
@@ -57,27 +60,39 @@ async fn handle_email(raw_email: &String, zk_email_circom_dir: &String) {
     println!("Subject, from: {:?} {:?}", subject, from);
 
     // Write raw_email to ../wallet_{hash}.eml
-    let file_path = format!("{}/wallet_{}.eml", "./received_eml", hash);
-    match fs::write(file_path.clone(), raw_email.clone()) {
-        Ok(_) => println!("Email data written successfully to {}", file_path),
-        Err(e) => println!("Error writing data to file: {}", e),
-    }
-    std::thread::sleep(std::time::Duration::from_secs(3));
+    // let file_path = format!("{}/wallet_{}.eml", "./received_eml", hash);
+    // match fs::write(file_path.clone(), raw_email.clone()) {
+    //     Ok(_) => println!("Email data written successfully to {}", file_path),
+    //     Err(e) => println!("Error writing data to file: {}", e),
+    // }
+    // std::thread::sleep(std::time::Duration::from_secs(3));
+    let webhook_url = "";
+    let client = reqwest::Client::new();
+    let response = client
+        .post(webhook_url)
+        .header("Content-Type", "application/octet-stream")
+        .body(raw_email.clone().as_str())
+        .send()
+        .await
+        .unwrap();
 
-    match run_commands(hash, zk_email_circom_dir) {
-        Ok(_) => println!("Commands executed successfully."),
-        Err(err) => eprintln!("Error: {}", err),
-    }
+    println!("Response status: {}", response.status());
 
-    match send_to_chain(true, "./data", hash.to_string().as_str()).await {
-        Ok(_) => {
-            println!("Successfully sent to chain.");
-        }
-        Err(err) => {
-            eprintln!("Error to send to chain at {}: {}", line!(), err);
-        }
-    }
+    // match run_commands(hash, zk_email_circom_dir) {
+    //     Ok(_) => println!("Commands executed successfully."),
+    //     Err(err) => eprintln!("Error: {}", err),
+    // }
+
+    // match send_to_chain(true, "./data", hash.to_string().as_str()).await {
+    //     Ok(_) => {
+    //         println!("Successfully sent to chain.");
+    //     }
+    //     Err(err) => {
+    //         eprintln!("Error to send to chain at {}: {}", line!(), err);
+    //     }
+    // }
 }
+
 // async fn process_email_event(payload: Json<Vec<EmailEvent>>) -> impl IntoResponse {
 //     print!("Email received! {:?}", payload);
 //     let re = Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc) to (.+@.+(\..+)+)").unwrap();
