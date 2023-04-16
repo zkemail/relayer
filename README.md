@@ -9,21 +9,28 @@ Goerli Wallet Address (circom-only): 0x3b3857eaf44804cce00449b7fd40310e6de6496e
 In a new cloud instance, run:
 
 ```
-export YOURDOMAIN=sendeth.org
 sudo apt update
+chmod +x src/circom_proofgen.sh
+chmod +x ../rapidsnark/build/prover
 sudo apt-get install -y pkg-config libssl-dev build-essential nginx certbot python3-certbot-nginx
 curl https://sh.rustup.rs -sSf | sh
 cargo build --release
 ip -4 -o addr show scope global | awk '{print $4}' && ip -6 -o addr show scope global | awk '{print $4}' # Point the DNS to these raw IPs
 ```
 
-### Test chain
-
-This verifies that your connection to the chain works and simple txes will send.
+## Directory Setup
 
 ```
-cargo run --bin chain
+-
+  - zk-email-verify
+    - ...
+  - relayer
+    - ...
+  - rapidsnark
+    - ...
 ```
+
+Note that you'll have to populate the build folder, run `make` in `zk-email-verify/build/email/email_cpp`, and install rapidsnark according to the zk-email-verify README.
 
 ## Run
 
@@ -32,6 +39,20 @@ First, run the relayer.
 ```
 cargo run --bin relayer
 ```
+
+Test chain connection to verify that your connection to the chain works and simple tx's will send.
+
+```
+cargo run --bin chain
+```
+
+To test the proofgen, send `relayer@sendeth.org` an email then run
+
+```
+./src/cirom_proofgen.sh
+```
+
+### Run infra
 
 Then run the prover + infrastructure coordinator.
 

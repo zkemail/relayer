@@ -4,12 +4,22 @@ import time
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import subprocess
+import os
+from dotenv import load_dotenv
+stub = modal.Stub()
+
 
 class DirectoryChangeHandler(FileSystemEventHandler):
-    def on_modified(self, event):
-        if event.is_directory:
-            print(f"Directory {event.src_path} has been modified.")
-            subprocess.run(["./src/circom_proofgen.sh"])
+    @stub.function(mounts=[
+        modal.Mount.from_local_dir("../", remote_path="/root/")],
+    )
+    def on_created(self, event):
+        if not event.is_directory:
+            print(f"New file {event.src_path} has been added.")
+            file_name = os.path.basename(event.src_path)
+            file_name_without_prefix = file_name[file_name.rfind('_') + 1:file_name.rfind('.')]
+            subprocess.run(["./src/circom_proofgen.sh", file_name_without_prefix])
+
 
 def prove_on_email(path: str):
     event_handler = DirectoryChangeHandler()
@@ -25,21 +35,13 @@ def prove_on_email(path: str):
 
     observer.join()
 
-stub = modal.Stub()
-
-@stub.webhook(mounts=[
-    modal.Mount.from_local_dir("~/", remote_path="/root/")],
-)
-def run_commands(email_bytes):
-    print(email_bytes)
-    # Parse email in rust
-    print(open("/root/rapidsnark/test.txt").readlines())
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python coordinator.py <directory_path>")
+    load_dotenv()  # Load environment variables from .env file
+
+    path = os.getenv("INCOMING_EML_PATH")
+    if path is None:
+        print("Error: INCOMING_EML_PATH is not set in the .env file")
         sys.exit(1)
 
-    path = sys.argv[1]
     prove_on_email(path)
-
