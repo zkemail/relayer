@@ -57,7 +57,7 @@ async fn handle_email(raw_email: &String, zk_email_circom_dir: &String) {
     println!("Subject, from: {:?} {:?}", subject, from);
 
     // Write raw_email to ../wallet_{hash}.eml
-    let file_path = format!("{}/wallet_{}.eml", zk_email_circom_dir, hash);
+    let file_path = format!("{}/wallet_{}.eml", "./received_eml", hash);
     match fs::write(file_path.clone(), raw_email.clone()) {
         Ok(_) => println!("Email data written successfully to {}", file_path),
         Err(e) => println!("Error writing data to file: {}", e),
