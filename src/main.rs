@@ -49,7 +49,7 @@ struct EmailEvent {
     to: Option<String>,
 }
 
-async fn handle_email(raw_email: &String, zk_email_circom_dir: &String) {
+async fn handle_email(raw_email: String, zk_email_circom_dir: &String) {
     let hash = {
         let mut hasher = DefaultHasher::new();
         raw_email.hash(&mut hasher);
@@ -71,7 +71,7 @@ async fn handle_email(raw_email: &String, zk_email_circom_dir: &String) {
     let response = client
         .post(webhook_url)
         .header("Content-Type", "application/octet-stream")
-        .body(raw_email.clone().as_str())
+        .body(raw_email)
         .send()
         .await
         .unwrap();
@@ -250,7 +250,7 @@ async fn main() -> Result<()> {
                 if let Some(b) = fetch.body() {
                     let body = String::from_utf8(b.to_vec())?;
                     println!("body: {}", body);
-                    handle_email(&body, &zk_email_circom_path).await;
+                    handle_email(body, &zk_email_circom_path).await;
                     // let values = parse_external_eml(&body).await.unwrap();
                     // println!("values: {:?}", values);
                     // let from = extract_from(&body).unwrap();
