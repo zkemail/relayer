@@ -46,7 +46,7 @@ struct EmailEvent {
     to: Option<String>,
 }
 
-async fn handle_email(raw_email: &String) {
+async fn handle_email(raw_email: &String, zk_email_circom_dir: &String) {
     let hash = {
         let mut hasher = DefaultHasher::new();
         raw_email.hash(&mut hasher);
@@ -57,19 +57,19 @@ async fn handle_email(raw_email: &String) {
     println!("Subject, from: {:?} {:?}", subject, from);
 
     // Write raw_email to ../wallet_{hash}.eml
-    let file_path = format!("../zk-email-verify/wallet_{}.eml", hash);
+    let file_path = format!("{}/wallet_{}.eml", zk_email_circom_dir, hash);
     match fs::write(file_path.clone(), raw_email.clone()) {
         Ok(_) => println!("Email data written successfully to {}", file_path),
         Err(e) => println!("Error writing data to file: {}", e),
     }
     std::thread::sleep(std::time::Duration::from_secs(3));
 
-    match run_commands(hash) {
+    match run_commands(hash, zk_email_circom_dir) {
         Ok(_) => println!("Commands executed successfully."),
         Err(err) => eprintln!("Error: {}", err),
     }
 
-    match send_to_chain(true, "./", hash.to_string().as_str()).await {
+    match send_to_chain(true, "./data", hash.to_string().as_str()).await {
         Ok(_) => {
             println!("Successfully sent to chain.");
         }
@@ -180,13 +180,14 @@ const IMAP_CLIENT_SECRET_KEY: &'static str = "IMAP_CLIENT_SECRET";
 const IMAP_AUTH_URL_KEY: &'static str = "IMAP_AUTH_URL";
 const IMAP_TOKEN_URL_KEY: &'static str = "IMAP_TOKEN_URL";
 const IMAP_REDIRECT_URL_KEY: &'static str = "IMAP_REDIRECT_URL";
+const ZK_EMAIL_PATH_KEY: &'static str = "ZK_EMAIL_CIRCOM_PATH";
 
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenv().ok();
-    env_logger::init(); // Enable verbose logging
 
     let domain_name = env::var(IMAP_DOMAIN_NAME_KEY)?;
+    let zk_email_circom_path = env::var(ZK_EMAIL_PATH_KEY)?;
     let port = env::var(IMAP_PORT_KEY)?.parse()?;
     let auth_type = env::var(IMAP_AUTH_TYPE_KEY)?;
     let imap_auth = if &auth_type == "password" {
@@ -234,7 +235,7 @@ async fn main() -> Result<()> {
                 if let Some(b) = fetch.body() {
                     let body = String::from_utf8(b.to_vec())?;
                     println!("body: {}", body);
-                    handle_email(&body).await;
+                    handle_email(&body, &zk_email_circom_path).await;
                     // let values = parse_external_eml(&body).await.unwrap();
                     // println!("values: {:?}", values);
                     // let from = extract_from(&body).unwrap();

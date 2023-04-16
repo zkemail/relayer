@@ -38,7 +38,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     println!("Calldata: {:?}", calldata);
 
     // Call the main function with the specified or default values
-    match send_to_chain(true, dir, nonce).await {
+    match send_to_chain(true, "./data", nonce).await {
         Ok(_) => {
             println!("Successfully sent to chain.");
         }
@@ -121,6 +121,7 @@ fn parse_files_into_calldata(
 }
 
 // local: bool - whether or not to send to a local RPC
+// dir: data directory where the intermediate rapidsnark inputs/proofs will be stored
 pub async fn send_to_chain(
     test: bool,
     dir: &str,

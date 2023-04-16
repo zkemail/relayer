@@ -5,9 +5,10 @@ const CIRCUIT_NAME: &str = "email";
 // const HOME: &str = "/home/ubuntu";
 const HOME: &str = "../";
 
-pub fn run_commands(nonce: u64) -> Result<(), Box<dyn Error>> {
+// TODO: Convert to sh script
+pub fn run_commands(nonce: u64, zk_email_path: &String) -> Result<(), Box<dyn Error>> {
     // These 3 need to exist
-    let zk_email_path = format!("{}/zk-email-verify", HOME);
+    // let zk_email_path = format!("{}/zk-email-verify", HOME);
     let build_dir = format!("{}/build/{}", zk_email_path, CIRCUIT_NAME);
     let wallet_eml_path = format!("{}/wallet_{}.eml", zk_email_path, nonce);
 

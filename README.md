@@ -2,30 +2,6 @@
 
 A permissionless Rust Axum webserver relayer service that reads email and responds to it. Uses IMAP.
 
-## Enable IMAP in Gmail
-
-Here's how to enable IMAP access and use App Passwords for your Gmail or Google Workspace account:
-
-Enable IMAP:
-
-a. Sign in to your Gmail or Google Workspace account.
-b. Click the gear icon in the top-right corner and select "See all settings."
-c. Go to the "Forwarding and POP/IMAP" tab.
-d. In the "IMAP access" section, select "Enable IMAP."
-e. Click "Save Changes."
-
-Create an App Password (recommended):
-
-a. Go to your Google Account settings: https://myaccount.google.com/
-b. In the left-hand menu, click "Security."
-c. In the "Signing in to Google" section, click on "App Passwords." (Note: This option will only be available if you have 2-Step Verification enabled.)
-d. Click on "Select app" and choose "Mail" from the dropdown menu.
-e. Click on "Select device" and choose the device you're using or select "Other" to enter a custom name.
-f. Click "Generate."
-g. Google will generate a 16-character App Password. Make sure to copy and save it securely, as you won't be able to see it again.
-
-Now, when connecting to Gmail or Google Workspace via IMAP, use your email address as the "imap id" (username) and the generated App Password as the "password." If you have not enabled 2-Step Verification and are using "Less secure apps" access, you can use your regular email password instead of the App Password. However, using App Passwords is recommended for enhanced security.
-
 Goerli Wallet Address (circom-only): 0x3b3857eaf44804cce00449b7fd40310e6de6496e
 
 ## Setup
@@ -49,11 +25,22 @@ This verifies that your connection to the chain works and simple txes will send.
 cargo run --bin chain
 ```
 
-## Run relayer
+## Run
+
+First, run the relayer.
 
 ```
 cargo run --bin relayer
 ```
+
+Then run the prover + infrastructure coordinator.
+
+```
+pip3 install --r requirements.txt
+python3 coordinator.py
+```
+
+## External Setup
 
 ### Turn on nginx
 
@@ -91,6 +78,30 @@ Test the Nginx configuration and restart Nginx:
 export YOURDOMAIN=sendeth.org
 sudo certbot --nginx -d $YOURDOMAIN -d www.$YOURDOMAIN
 ```
+
+### Enable IMAP in Gmail
+
+Here's how to enable IMAP access and use App Passwords for your Gmail or Google Workspace account:
+
+Enable IMAP:
+
+a. Sign in to your Gmail or Google Workspace account.
+b. Click the gear icon in the top-right corner and select "See all settings."
+c. Go to the "Forwarding and POP/IMAP" tab.
+d. In the "IMAP access" section, select "Enable IMAP."
+e. Click "Save Changes."
+
+Create an App Password (recommended):
+
+a. Go to your Google Account settings: https://myaccount.google.com/
+b. In the left-hand menu, click "Security."
+c. In the "Signing in to Google" section, click on "App Passwords." (Note: This option will only be available if you have 2-Step Verification enabled.)
+d. Click on "Select app" and choose "Mail" from the dropdown menu.
+e. Click on "Select device" and choose the device you're using or select "Other" to enter a custom name.
+f. Click "Generate."
+g. Google will generate a 16-character App Password. Make sure to copy and save it securely, as you won't be able to see it again.
+
+Now, when connecting to Gmail or Google Workspace via IMAP, use your email address as the "imap id" (username) and the generated App Password as the "password." If you have not enabled 2-Step Verification and are using "Less secure apps" access, you can use your regular email password instead of the App Password. However, using App Passwords is recommended for enhanced security.
 
 ### Enable ports in AWS
 
