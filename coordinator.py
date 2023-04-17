@@ -30,14 +30,19 @@ def test(file_contents: str):
     return len(file_contents)
 
 # --------- LOCAL COORDINATOR ------------
+
+def is_eml_file(file_name):
+    _, file_extension = os.path.splitext(file_name)
+    return file_extension.lower() == '.eml'
+
 class DirectoryChangeHandler(FileSystemEventHandler):
     def on_created(self, event):
         if not event.is_directory:
             print(f"New file {event.src_path} has been added.")
             file_name = os.path.basename(event.src_path)
-            file_name_without_prefix = file_name[file_name.rfind('_') + 1:file_name.rfind('.')]
-            subprocess.run(["./src/circom_proofgen.sh", file_name_without_prefix])
-
+            if (is_eml_file(file_name)):
+                file_name_without_prefix = file_name[file_name.rfind('_') + 1:file_name.rfind('.')]
+                subprocess.run(["./src/circom_proofgen.sh", file_name_without_prefix])
 
 def prove_on_email(path: str):
     event_handler = DirectoryChangeHandler()

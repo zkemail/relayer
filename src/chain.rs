@@ -14,10 +14,10 @@ use k256::ecdsa::SigningKey;
 use rand::thread_rng;
 use serde_json::Value;
 use std::convert::TryFrom;
+use std::env;
 use std::error::Error;
 use std::fs;
 use std::str::{self, FromStr};
-use std::env;
 
 #[derive(Debug, Clone)]
 struct CircomCalldata {
@@ -70,10 +70,7 @@ fn parse_files_into_calldata(
     nonce: &str,
 ) -> Result<CircomCalldata, Box<dyn std::error::Error>> {
     let proof_dir = dir.to_owned() + "rapidsnark_proof_" + nonce + ".json";
-    let proof_json: Value = serde_json::from_str(
-        &fs::read_to_string(proof_dir).unwrap(),
-    )
-    .unwrap();
+    let proof_json: Value = serde_json::from_str(&fs::read_to_string(proof_dir).unwrap()).unwrap();
     let public_json: Value = serde_json::from_str(
         &fs::read_to_string(dir.to_owned() + "rapidsnark_public_" + nonce + ".json").unwrap(),
     )

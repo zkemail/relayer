@@ -50,6 +50,7 @@ impl<'a> Authenticator for OAuthed {
 
 impl EmailReceiver {
     pub async fn construct(domain_name: &str, port: u16, auth: IMAPAuth) -> Result<Self> {
+        println!("Trying to construct...");
         let tls = native_tls::TlsConnector::builder().build()?;
         println!("Beginning connection process to IMAP server...");
         let client = imap::connect((domain_name, port), domain_name, &tls)?;
