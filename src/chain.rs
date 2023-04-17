@@ -42,7 +42,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     println!("Calldata: {:?}", calldata);
 
     // Call the main function with the specified or default values
-    match send_to_chain(true, "./calldata", nonce).await {
+    match send_to_chain(true, dir, nonce).await {
         Ok(_) => {
             println!("Successfully sent to chain.");
         }
@@ -69,8 +69,9 @@ fn parse_files_into_calldata(
     dir: &str,
     nonce: &str,
 ) -> Result<CircomCalldata, Box<dyn std::error::Error>> {
+    let proof_dir = dir.to_owned() + "rapidsnark_proof_" + nonce + ".json";
     let proof_json: Value = serde_json::from_str(
-        &fs::read_to_string(dir.to_owned() + "rapidsnark_proof_" + nonce + ".json").unwrap(),
+        &fs::read_to_string(proof_dir).unwrap(),
     )
     .unwrap();
     let public_json: Value = serde_json::from_str(
