@@ -40,16 +40,6 @@ if [ $status_c_wit -ne 0 ]; then
     exit 1
 fi
 
-# OLD: WASM witness gen
-# node "${build_dir}/${CIRCUIT_NAME}_js/generate_witness.js" "${build_dir}/${CIRCUIT_NAME}_js/${CIRCUIT_NAME}.wasm" "${input_wallet_path}" "${witness_path}"
-# status1=$?
-
-# echo "Finished witness gen! Status: ${status1}"
-# if [ $status1 -ne 0 ]; then
-#     echo "generate_witness.js failed with status: ${status1}"
-#     exit 1
-# fi
-
 "${HOME}/rapidsnark/build/prover" "${build_dir}/${CIRCUIT_NAME}.zkey" "${witness_path}" "${proof_path}" "${public_path}"
 status2=$?
 

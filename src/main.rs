@@ -17,13 +17,16 @@ use dotenv::dotenv;
 use duct::cmd;
 use futures_util::stream::StreamExt;
 use imap_client::{EmailReceiver, IMAPAuth};
+// use lettre::message::{header, Mailbox, Message, MultiPart, SinglePart};
+// use lettre::transport::smtp::authentication::Credentials;
+// use lettre::{SmtpTransport, Transport};
 use parse_email::*;
 use regex::Regex;
 use reqwest;
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
-use sh_caller::run_commands;
+// use sh_caller::run_commands;
 use std::fs::File;
 use std::io::Read;
 use std::{
@@ -59,6 +62,16 @@ async fn handle_email(raw_email: String, zk_email_circom_dir: &String) {
     let mut from = extract_from(&raw_email).unwrap();
     println!("Subject, from: {:?} {:?}", subject, from);
 
+    // Validate subject, and send rejection/reformatting email if necessary
+    // let re = Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc) to (.+@.+(\..+)+)").unwrap();
+    // if let (Some(to), Some(subject)) = (&email.to, &email.subject) {
+    //     let subject_regex = re.clone();
+    //     if subject_regex.is_match(subject) {
+    //         let custom_reply = format!("{} on Ethereum", subject);
+    //         let confirmation = send_custom_reply(to, &custom_reply).await;
+    //     }
+    // }
+
     // Path 1: Write raw_email to ../wallet_{hash}.eml
     let file_path = format!("{}/wallet_{}.eml", "./received_eml", hash);
     match fs::write(file_path.clone(), raw_email.clone()) {
@@ -78,113 +91,49 @@ async fn handle_email(raw_email: String, zk_email_circom_dir: &String) {
     //     .await
     //     .unwrap();
 
+    // Path
+
     // println!("Response status: {}", response.status());
-
-    // match run_commands(hash, zk_email_circom_dir) {
-    //     Ok(_) => println!("Commands executed successfully."),
-    //     Err(err) => eprintln!("Error: {}", err),
-    // }
-
-    // match send_to_chain(true, "./data", hash.to_string().as_str()).await {
-    //     Ok(_) => {
-    //         println!("Successfully sent to chain.");
-    //     }
-    //     Err(err) => {
-    //         eprintln!("Error to send to chain at {}: {}", line!(), err);
-    //     }
-    // }
 }
 
-// async fn process_email_event(payload: Json<Vec<EmailEvent>>) -> impl IntoResponse {
-//     print!("Email received! {:?}", payload);
-//     let re = Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc) to (.+@.+(\..+)+)").unwrap();
-// if let (Some(to), Some(subject)) = (&email.to, &email.subject) {
-//     let subject_regex = re.clone();
-//     if subject_regex.is_match(subject) {
-//         let custom_reply = format!("{} on Ethereum", subject);
-//         let confirmation = send_custom_reply(to, &custom_reply).await;
-//         if confirmation {
-//             // Call the Rust function that sends a call to Alchemy with the return of that data
-//         }
-//     }
-// }
+// Helper function to send a reply to a retrieved email
+// pub fn send_reply(
+//     body: &str,
+//     reply_body: &str,
+//     gmail_account: &str,
+//     gmail_app_password: &str,
+// ) -> Result<()> {
+//     // Parse the email to extract sender, subject, and message ID
+//     let mail: ParsedMail = mailparse::parse_mail(body)?;
+//     let from = mail.headers.get_first_value("From")?;
+//     let subject = mail.headers.get_first_value("Subject")?;
+//     let message_id = mail.headers.get_first_value("Message-ID")?;
 
-// async fn send_custom_reply(to: &str, subject: &str) -> bool {
-//     let sendgrid_api_key = env::var("SENDGRID_API_KEY").unwrap();
-//     let client = Client::new();
+//     // Create the email message
+//     let email = Message::builder()
+//         .from(Mailbox::new(None, gmail_account.parse()?))
+//         .to(from.parse()?)
+//         .subject(format!("Re: {}", subject))
+//         .header(header::InReplyTo(message_id.parse()?))
+//         .header(header::References(vec![message_id.parse()?]))
+//         .multipart(
+//             MultiPart::mixed().singlepart(
+//                 SinglePart::plain()
+//                     .header(header::ContentType("text/plain; charset=utf8".parse()?))
+//                     .body(reply_body.to_string()),
+//             ),
+//         )?;
 
-//     println!("Subject: {:?}", subject);
-//     let subject_regex =
-//         Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc) to (.+@.+(\..+)+)").unwrap();
-//     let mut reply_body = "";
-//     let success = String::from("Sending tx on Ethereum! Executing: ") + subject;
-//     if subject_regex.is_match(subject) {
-//         reply_body = success.as_str();
-//     } else {
-//         reply_body = "Not formatted correctly! Try 'Send X eth to zkemailverify@gmail.com'";
-//     }
+//     // Configure the SMTP transport with Gmail's SMTP server and app password
+//     let creds = Credentials::new(gmail_account.to_string(), gmail_app_password.to_string());
+//     let mailer = SmtpTransport::relay("smtp.gmail.com")?
+//         .credentials(creds)
+//         .build();
 
-//     let response = client
-//         .post("https://api.sendgrid.com/v3/mail/send")
-//         .header("Authorization", format!("Bearer {}", sendgrid_api_key))
-//         .header("Content-Type", "application/json")
-//         .body(format!(
-//             r#"{{
-//                 "personalizations": [{{ "to": [{{ "email": "{}" }}] }}],
-//                 "from": {{ "email": "verify@sendeth.org" }},
-//                 "subject": "{}",
-//                 "content": [{{ "type": "text/plain", "value": "{}" }}]
-//             }}"#,
-//             to, subject, reply_body
-//         ))
-//         .send()
-//         .await;
-//     match response {
-//         Ok(response) => {
-//             println!("Response: {:?}", response);
-//             true
-//         }
-//         Err(err) => {
-//             println!("Error responding: {:?}", err);
-//             false
-//         }
-//     }
-// }
+//     // Send the email
+//     mailer.send(&email)?;
 
-// async fn handle_data(
-//     // this argument tells axum to parse the request body
-//     // as JSON into a `CreateUser` type
-//     body: Json<serde_json::Value>,
-// ) -> impl IntoResponse {
-//     println!("Handling email {:?}", body);
-
-//     // this will be converted into a JSON response
-//     // with a status code of `201 Created`
-//     (StatusCode::CREATED, Json("OK"))
-// }
-
-// #[tokio::main]
-// async fn main() {
-//     // Set up a tracing subscriber
-//     println!("Starting webserver!");
-//     let subscriber = Subscriber::builder()
-//         .with_env_filter(EnvFilter::from_default_env())
-//         .finish();
-
-//     tracing::subscriber::set_global_default(subscriber)
-//         .expect("Failed to set the global tracing subscriber");
-
-//     let app = Router::new()
-//         .route("/webhook", post(handle_data))
-//         .route("/email_in", post(parse_email_multipart))
-//         .route("/email_event", post(handle_data));
-
-//     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
-//     axum::Server::bind(&addr)
-//         .serve(app.into_make_service())
-//         .await
-//         .unwrap();
-//     println!("Finished setting up webservers!");
+//     Ok(())
 // }
 
 const IMAP_DOMAIN_NAME_KEY: &'static str = "IMAP_DOMAIN_NAME";
