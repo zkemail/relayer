@@ -1,3 +1,4 @@
+mod chain;
 mod imap_client;
 pub mod parse_email;
 mod processer;
@@ -11,16 +12,23 @@ use axum::{
     routing::post,
     Router,
 };
+use chain::send_to_chain;
 use dotenv::dotenv;
 use duct::cmd;
 use futures_util::stream::StreamExt;
 use imap_client::{EmailReceiver, IMAPAuth};
+// use lettre::message::{header, Mailbox, Message, MultiPart, SinglePart};
+// use lettre::transport::smtp::authentication::Credentials;
+// use lettre::{SmtpTransport, Transport};
 use parse_email::*;
 use regex::Regex;
+use reqwest;
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
-use sh_caller::run_commands;
+// use sh_caller::run_commands;
+use std::fs::File;
+use std::io::Read;
 use std::{
     collections::hash_map::DefaultHasher,
     env,
@@ -44,192 +52,88 @@ struct EmailEvent {
     to: Option<String>,
 }
 
-// async fn process_email_event(payload: Json<Vec<EmailEvent>>) -> impl IntoResponse {
-//     print!("Email received! {:?}", payload);
-//     let re = Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc) to (.+@.+(\..+)+)").unwrap();
-//     for email in &*payload {
-//         if let Some(raw_email) = &email.dkim {
-//             // Hash raw_email
-//             let hash = {
-//                 let mut hasher = DefaultHasher::new();
-//                 raw_email.hash(&mut hasher);
-//                 hasher.finish()
-//             };
-//             let email = raw_email.clone() + "\n";
-//             let file_path = "./email_before.txt";
-//             match fs::write(file_path, email.clone()) {
-//                 Ok(_) => println!("Data written successfully to {}", file_path),
-//                 Err(e) => println!("Error writing data to file: {}", e),
-//             }
+async fn handle_email(raw_email: String, zk_email_circom_dir: &String) {
+    let hash = {
+        let mut hasher = DefaultHasher::new();
+        raw_email.hash(&mut hasher);
+        hasher.finish()
+    };
+    let mut subject = extract_subject(&raw_email).unwrap();
+    let mut from = extract_from(&raw_email).unwrap();
+    println!("Subject, from: {:?} {:?}", subject, from);
 
-//             let (parsed_headers, body_bytes, key_bytes, signature_bytes) =
-//                 parse_external_eml(&email).await.unwrap();
-//             print!(
-//                 "Parsed email with hash {:?}: {:?} {:?} {:?} {:?}",
-//                 hash, parsed_headers, body_bytes, key_bytes, signature_bytes
-//             );
+    // Validate subject, and send rejection/reformatting email if necessary
+    // let re = Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc) to (.+@.+(\..+)+)").unwrap();
+    // if let (Some(to), Some(subject)) = (&email.to, &email.subject) {
+    //     let subject_regex = re.clone();
+    //     if subject_regex.is_match(subject) {
+    //         let custom_reply = format!("{} on Ethereum", subject);
+    //         let confirmation = send_custom_reply(to, &custom_reply).await;
+    //     }
+    // }
 
-//             let value = call_generate_inputs(
-//                 raw_email,
-//                 "0x0000000000000000000000000000000000000000",
-//                 hash,
-//             )
-//             .await
-//             .unwrap();
-// if let (Some(to), Some(subject)) = (&email.to, &email.subject) {
-//     let subject_regex = re.clone();
-//     if subject_regex.is_match(subject) {
-//         let custom_reply = format!("{} on Ethereum", subject);
-//         let confirmation = send_custom_reply(to, &custom_reply).await;
-//         if confirmation {
-//             // Call the Rust function that sends a call to Alchemy with the return of that data
-//         }
-//     }
-// }
-//         }
-//     }
+    // Path 1: Write raw_email to ../wallet_{hash}.eml
+    let file_path = format!("{}/wallet_{}.eml", "./received_eml", hash);
+    match fs::write(file_path.clone(), raw_email.clone()) {
+        Ok(_) => println!("Email data written successfully to {}", file_path),
+        Err(e) => println!("Error writing data to file: {}", e),
+    }
+    std::thread::sleep(std::time::Duration::from_secs(3));
 
-//     StatusCode::OK
-// }
+    // Path 2: Send to modal
+    // let webhook_url = "";
+    // let client = reqwest::Client::new();
+    // let response = client
+    //     .post(webhook_url)
+    //     .header("Content-Type", "application/octet-stream")
+    //     .body(raw_email)
+    //     .send()
+    //     .await
+    //     .unwrap();
 
-// async fn parse_email_multipart(mut multipart: Multipart) {
-//     while let Some(mut field) = multipart.next_field().await.unwrap() {
-//         let name = field.name().unwrap().to_string();
-//         let data = field.bytes().await.unwrap();
-//         if name == String::from("email") {
-//             // Hash raw_email
-//             let hash = {
-//                 let mut hasher = DefaultHasher::new();
-//                 data.hash(&mut hasher);
-//                 hasher.finish()
-//             };
-//             // let v = data.to_vec();
-//             let mut transformed_data = Vec::new();
-//             let mut prev_byte = 0;
-//             for &byte in data.iter() {
-//                 if byte == 10 {
-//                     if prev_byte != 13 {
-//                         transformed_data.push(13);
-//                     }
-//                 }
-//                 transformed_data.push(byte);
-//                 prev_byte = byte;
-//             }
+    // Path
 
-//             println!("Raw data {:?}", transformed_data.to_vec());
-//             let raw_email = String::from_utf8(transformed_data).unwrap();
+    // println!("Response status: {}", response.status());
+}
 
-//             let (parsed_headers, body_bytes, key_bytes, signature_bytes) =
-//                 parse_external_eml(&raw_email).await.unwrap();
+// Helper function to send a reply to a retrieved email
+// pub fn send_reply(
+//     body: &str,
+//     reply_body: &str,
+//     gmail_account: &str,
+//     gmail_app_password: &str,
+// ) -> Result<()> {
+//     // Parse the email to extract sender, subject, and message ID
+//     let mail: ParsedMail = mailparse::parse_mail(body)?;
+//     let from = mail.headers.get_first_value("From")?;
+//     let subject = mail.headers.get_first_value("Subject")?;
+//     let message_id = mail.headers.get_first_value("Message-ID")?;
 
-//             println!(
-//                 "Parsed email with hash {:?}: {:?} {:?} {:?} {:?}",
-//                 hash,
-//                 String::from_utf8(parsed_headers).unwrap(),
-//                 body_bytes,
-//                 key_bytes,
-//                 signature_bytes,
-//             );
+//     // Create the email message
+//     let email = Message::builder()
+//         .from(Mailbox::new(None, gmail_account.parse()?))
+//         .to(from.parse()?)
+//         .subject(format!("Re: {}", subject))
+//         .header(header::InReplyTo(message_id.parse()?))
+//         .header(header::References(vec![message_id.parse()?]))
+//         .multipart(
+//             MultiPart::mixed().singlepart(
+//                 SinglePart::plain()
+//                     .header(header::ContentType("text/plain; charset=utf8".parse()?))
+//                     .body(reply_body.to_string()),
+//             ),
+//         )?;
 
-//             let mut subject = extract_subject(&raw_email).unwrap();
-//             let mut from = extract_from(&raw_email).unwrap();
-//             println!("Subject, from: {:?} {:?}", subject, from);
-//             // Write raw_email to ../wallet_{hash}.eml
-//             let file_path = format!("../zk-email-verify/wallet_{}.eml", hash);
-//             match fs::write(file_path.clone(), raw_email.clone()) {
-//                 Ok(_) => println!("Email data written successfully to {}", file_path),
-//                 Err(e) => println!("Error writing data to file: {}", e),
-//             }
-//             std::thread::sleep(std::time::Duration::from_secs(3));
+//     // Configure the SMTP transport with Gmail's SMTP server and app password
+//     let creds = Credentials::new(gmail_account.to_string(), gmail_app_password.to_string());
+//     let mailer = SmtpTransport::relay("smtp.gmail.com")?
+//         .credentials(creds)
+//         .build();
 
-//             match run_commands(hash) {
-//                 Ok(_) => println!("Commands executed successfully."),
-//                 Err(err) => eprintln!("Error: {}", err),
-//             }
+//     // Send the email
+//     mailer.send(&email)?;
 
-//             // TODO: Swap order and do this first
-//             // send_custom_reply(&from, &subject).await;
-//         }
-//         println!("Content of `{}` is {:?}", name, data);
-//     }
-// }
-
-// async fn send_custom_reply(to: &str, subject: &str) -> bool {
-//     let sendgrid_api_key = env::var("SENDGRID_API_KEY").unwrap();
-//     let client = Client::new();
-
-//     println!("Subject: {:?}", subject);
-//     let subject_regex =
-//         Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc) to (.+@.+(\..+)+)").unwrap();
-//     let mut reply_body = "";
-//     let success = String::from("Sending tx on Ethereum! Executing: ") + subject;
-//     if subject_regex.is_match(subject) {
-//         reply_body = success.as_str();
-//     } else {
-//         reply_body = "Not formatted correctly! Try 'Send X eth to zkemailverify@gmail.com'";
-//     }
-
-//     let response = client
-//         .post("https://api.sendgrid.com/v3/mail/send")
-//         .header("Authorization", format!("Bearer {}", sendgrid_api_key))
-//         .header("Content-Type", "application/json")
-//         .body(format!(
-//             r#"{{
-//                 "personalizations": [{{ "to": [{{ "email": "{}" }}] }}],
-//                 "from": {{ "email": "verify@sendeth.org" }},
-//                 "subject": "{}",
-//                 "content": [{{ "type": "text/plain", "value": "{}" }}]
-//             }}"#,
-//             to, subject, reply_body
-//         ))
-//         .send()
-//         .await;
-//     match response {
-//         Ok(response) => {
-//             println!("Response: {:?}", response);
-//             true
-//         }
-//         Err(err) => {
-//             println!("Error responding: {:?}", err);
-//             false
-//         }
-//     }
-// }
-
-// async fn handle_data(
-//     // this argument tells axum to parse the request body
-//     // as JSON into a `CreateUser` type
-//     body: Json<serde_json::Value>,
-// ) -> impl IntoResponse {
-//     println!("Handling email {:?}", body);
-
-//     // this will be converted into a JSON response
-//     // with a status code of `201 Created`
-//     (StatusCode::CREATED, Json("OK"))
-// }
-
-// #[tokio::main]
-// async fn main() {
-//     // Set up a tracing subscriber
-//     println!("Starting webserver!");
-//     let subscriber = Subscriber::builder()
-//         .with_env_filter(EnvFilter::from_default_env())
-//         .finish();
-
-//     tracing::subscriber::set_global_default(subscriber)
-//         .expect("Failed to set the global tracing subscriber");
-
-//     let app = Router::new()
-//         .route("/webhook", post(handle_data))
-//         .route("/email_in", post(parse_email_multipart))
-//         .route("/email_event", post(handle_data));
-
-//     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
-//     axum::Server::bind(&addr)
-//         .serve(app.into_make_service())
-//         .await
-//         .unwrap();
-//     println!("Finished setting up webservers!");
+//     Ok(())
 // }
 
 const IMAP_DOMAIN_NAME_KEY: &'static str = "IMAP_DOMAIN_NAME";
@@ -242,11 +146,14 @@ const IMAP_CLIENT_SECRET_KEY: &'static str = "IMAP_CLIENT_SECRET";
 const IMAP_AUTH_URL_KEY: &'static str = "IMAP_AUTH_URL";
 const IMAP_TOKEN_URL_KEY: &'static str = "IMAP_TOKEN_URL";
 const IMAP_REDIRECT_URL_KEY: &'static str = "IMAP_REDIRECT_URL";
+const ZK_EMAIL_PATH_KEY: &'static str = "ZK_EMAIL_CIRCOM_PATH";
 
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenv().ok();
+
     let domain_name = env::var(IMAP_DOMAIN_NAME_KEY)?;
+    let zk_email_circom_path = env::var(ZK_EMAIL_PATH_KEY)?;
     let port = env::var(IMAP_PORT_KEY)?.parse()?;
     let auth_type = env::var(IMAP_AUTH_TYPE_KEY)?;
     let imap_auth = if &auth_type == "password" {
@@ -294,6 +201,13 @@ async fn main() -> Result<()> {
                 if let Some(b) = fetch.body() {
                     let body = String::from_utf8(b.to_vec())?;
                     println!("body: {}", body);
+                    handle_email(body, &zk_email_circom_path).await;
+                    // let values = parse_external_eml(&body).await.unwrap();
+                    // println!("values: {:?}", values);
+                    // let from = extract_from(&body).unwrap();
+                    // println!("from: {:?}", from);
+                    // let subject = extract_subject(&body).unwrap();
+                    // println!("subject: {:?}", subject);
                 } else {
                     println!("no body");
                     break;

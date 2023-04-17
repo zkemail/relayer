@@ -14,6 +14,7 @@ use k256::ecdsa::SigningKey;
 use rand::thread_rng;
 use serde_json::Value;
 use std::convert::TryFrom;
+use std::env;
 use std::error::Error;
 use std::fs;
 use std::str::{self, FromStr};
@@ -26,12 +27,15 @@ struct CircomCalldata {
     signals: [U256; 34],
 }
 
+// Call like: cargo run --bin chain -- <proof_outputs_dir> <nonce>
 // Define a new function that takes optional arguments and provides default values
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    let args: Vec<String> = env::args().collect();
+
     // Provide default values if arguments are not specified
-    let dir = "";
-    let nonce = "17689783363368087877";
+    let dir = args.get(1).map_or("", String::as_str);
+    let nonce = args.get(2).map_or("17689783363368087877", String::as_str);
 
     // Call the main function with the specified or default values
     let calldata = get_calldata(Some(dir), Some(nonce)).unwrap();
@@ -65,10 +69,8 @@ fn parse_files_into_calldata(
     dir: &str,
     nonce: &str,
 ) -> Result<CircomCalldata, Box<dyn std::error::Error>> {
-    let proof_json: Value = serde_json::from_str(
-        &fs::read_to_string(dir.to_owned() + "rapidsnark_proof_" + nonce + ".json").unwrap(),
-    )
-    .unwrap();
+    let proof_dir = dir.to_owned() + "rapidsnark_proof_" + nonce + ".json";
+    let proof_json: Value = serde_json::from_str(&fs::read_to_string(proof_dir).unwrap()).unwrap();
     let public_json: Value = serde_json::from_str(
         &fs::read_to_string(dir.to_owned() + "rapidsnark_public_" + nonce + ".json").unwrap(),
     )
@@ -121,7 +123,8 @@ fn parse_files_into_calldata(
 }
 
 // local: bool - whether or not to send to a local RPC
-async fn send_to_chain(
+// dir: data directory where the intermediate rapidsnark inputs/proofs will be stored
+pub async fn send_to_chain(
     test: bool,
     dir: &str,
     nonce: &str,
@@ -156,7 +159,7 @@ async fn send_to_chain(
     let calldata = get_calldata(Some(dir), Some(nonce)).unwrap();
 
     // Read the contents of the ABI file as bytes
-    let abi_bytes = include_bytes!("../../../zk-email-verify/src/contracts/wallet.abi");
+    let abi_bytes = include_bytes!("../abi/wallet.abi");
     // Convert the bytes to a string
     let abi_str = str::from_utf8(abi_bytes)?;
     // Parse the string as JSON to obtain the ABI

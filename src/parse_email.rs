@@ -10,6 +10,7 @@ use std::env;
 use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
 use trust_dns_resolver::proto::rr::{RData, RecordType};
 use trust_dns_resolver::AsyncResolver;
+
 pub async fn parse_external_eml(
     raw_email: &String,
 ) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>), Box<dyn Error>> {
