@@ -60,7 +60,7 @@ fi
 
 echo "Finished proofgen! Status: ${status2}"
 
-"cargo run --bin chain -- ${prover_output_path} ${nonce}"
+./target/debug/chain "${prover_output_path}" "${nonce}"
 status3=$?
 if [ $status3 -ne 0 ]; then
     echo "Chain send failed with status: ${status3}"
