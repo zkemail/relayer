@@ -1,4 +1,4 @@
-# [WIP] Relayer
+# Relayer
 
 A permissionless Rust Axum webserver relayer service that reads email and responds to it. Uses IMAP.
 
@@ -76,13 +76,49 @@ Paste the following configuration and adjust the domain name and paths according
 
 ```
 server {
-    listen 80;
-    server_name sendeth.com www.sendeth.com;
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        listen 80;
+        server_name sendeth.org www.sendeth.org;
+        return 301 https://$host$request_uri;
+}
+
+server {
+        listen 443 ssl;
+        server_name sendeth.org www.sendeth.org;
+
+        ssl_certificate /etc/letsencrypt/live/sendeth.org/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/sendeth.org/privkey.pem;
+    ssl_protocols TLSv1.3 TLSv1.2;
+    ssl_prefer_server_ciphers on;
+    ssl_dhparam /etc/nginx/dhparam.pem;
+        ssl_ciphers 'TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GS256-GCM-SHA384:EECDH+AESGCM:EDH+AESGCM'
+
+        location / {
+                proxy_pass http://localhost:3000;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+        }
+}
+```
+
+We rely on gmail for IMAP, but if you want your own server, you can add thiss:
+```
+mail {
+    server_name sendeth.com;
+
+    imap_capabilities "IMAP4rev1" "UIDPLUS";
+
+    server {
+        listen 143;
+        protocol imap;
+    }
+
+    server {
+        listen 993 ssl;
+        protocol imap;
+        ssl_certificate /etc/letsencrypt/live/sendeth.com/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/sendeth.com/privkey.pem;
     }
 }
 ```
@@ -137,9 +173,11 @@ Then, enable inbound traffic. To do so, follow these steps:
 2. Select "Security Groups" from the left sidebar.
 3. Find the security group associated with your EC2 instance and click on its name.
 4. Click on the "Inbound rules" tab.
-5. Check if there are rules allowing traffic on ports 80 and 443. If not, add the rules by clicking on "Edit inbound rules" and then "Add rule". Choose "HTTP" for port 80 and "HTTPS" for port 443, and set the source to "Anywhere" or "0.0.0.0/0" (IPv4) and "::/0" (IPv6).
-
-You have to enable IPv4 and IPV6.
+5. For the server, check if there are rules allowing traffic on ports 80 and 443. If not, add the rules by clicking on "Edit inbound rules" and then "Add rule". Choose "HTTP" for port 80 and "HTTPS" for port 443, and set the source to "Anywhere" or "0.0.0.0/0" (IPv4) and "::/0" (IPv6). For IMAP, click on "Add rule" and create new rules for the necessary IMAP ports (143 and 993) with the following settings:
+- Type: Custom TCP
+- Protocol: TCP
+- Port Range: 143 (for IMAP) or 993 (for IMAPS)
+- Source: Choose "Anywhere" for both IPv4 and IPv6 (0.0.0.0/0 for IPv4 and ::/0 for IPv6)
 
 0. To rnable IPv6 support for your VPC (Virtual Private Cloud), go to the VPC Dashboard in the AWS Management Console, select your VPC, click on "Actions", and then click on "Edit CIDRs". Add an IPv6 CIDR block.
 1. Enable IPv6 support for your subnet. Go to the "Subnets" section in the VPC Dashboard, select the subnet associated with your EC2 instance, click on "Actions", and then click on "Edit IPv6 CIDRs". Add an IPv6 CIDR block.

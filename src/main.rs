@@ -59,24 +59,26 @@ async fn handle_email(raw_email: String, zk_email_circom_dir: &String) {
     let mut from = extract_from(&raw_email).unwrap();
     println!("Subject, from: {:?} {:?}", subject, from);
 
-    // Write raw_email to ../wallet_{hash}.eml
-    // let file_path = format!("{}/wallet_{}.eml", "./received_eml", hash);
-    // match fs::write(file_path.clone(), raw_email.clone()) {
-    //     Ok(_) => println!("Email data written successfully to {}", file_path),
-    //     Err(e) => println!("Error writing data to file: {}", e),
-    // }
-    // std::thread::sleep(std::time::Duration::from_secs(3));
-    let webhook_url = "";
-    let client = reqwest::Client::new();
-    let response = client
-        .post(webhook_url)
-        .header("Content-Type", "application/octet-stream")
-        .body(raw_email)
-        .send()
-        .await
-        .unwrap();
+    // Path 1: Write raw_email to ../wallet_{hash}.eml
+    let file_path = format!("{}/wallet_{}.eml", "./received_eml", hash);
+    match fs::write(file_path.clone(), raw_email.clone()) {
+        Ok(_) => println!("Email data written successfully to {}", file_path),
+        Err(e) => println!("Error writing data to file: {}", e),
+    }
+    std::thread::sleep(std::time::Duration::from_secs(3));
 
-    println!("Response status: {}", response.status());
+    // Path 2: Send to modal
+    // let webhook_url = "";
+    // let client = reqwest::Client::new();
+    // let response = client
+    //     .post(webhook_url)
+    //     .header("Content-Type", "application/octet-stream")
+    //     .body(raw_email)
+    //     .send()
+    //     .await
+    //     .unwrap();
+
+    // println!("Response status: {}", response.status());
 
     // match run_commands(hash, zk_email_circom_dir) {
     //     Ok(_) => println!("Commands executed successfully."),

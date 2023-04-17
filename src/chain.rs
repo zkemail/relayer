@@ -17,6 +17,7 @@ use std::convert::TryFrom;
 use std::error::Error;
 use std::fs;
 use std::str::{self, FromStr};
+use std::env;
 
 #[derive(Debug, Clone)]
 struct CircomCalldata {
@@ -26,19 +27,22 @@ struct CircomCalldata {
     signals: [U256; 34],
 }
 
+// Call like: cargo run --bin chain -- <proof_outputs_dir> <nonce>
 // Define a new function that takes optional arguments and provides default values
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    let args: Vec<String> = env::args().collect();
+
     // Provide default values if arguments are not specified
-    let dir = "";
-    let nonce = "17689783363368087877";
+    let dir = args.get(1).map_or("", String::as_str);
+    let nonce = args.get(2).map_or("17689783363368087877", String::as_str);
 
     // Call the main function with the specified or default values
     let calldata = get_calldata(Some(dir), Some(nonce)).unwrap();
     println!("Calldata: {:?}", calldata);
 
     // Call the main function with the specified or default values
-    match send_to_chain(true, "./data", nonce).await {
+    match send_to_chain(true, "./calldata", nonce).await {
         Ok(_) => {
             println!("Successfully sent to chain.");
         }
@@ -157,7 +161,7 @@ pub async fn send_to_chain(
     let calldata = get_calldata(Some(dir), Some(nonce)).unwrap();
 
     // Read the contents of the ABI file as bytes
-    let abi_bytes = include_bytes!("../data/wallet.abi");
+    let abi_bytes = include_bytes!("../abi/wallet.abi");
     // Convert the bytes to a string
     let abi_str = str::from_utf8(abi_bytes)?;
     // Parse the string as JSON to obtain the ABI
