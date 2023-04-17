@@ -2,7 +2,6 @@ mod chain;
 mod imap_client;
 pub mod parse_email;
 mod processer;
-mod sh_caller;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use axum::{
