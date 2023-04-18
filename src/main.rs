@@ -175,9 +175,9 @@ async fn main() -> Result<()> {
     let receiver = ImapClient::construct(&domain_name, port, imap_auth).await?;
     let mut processer = EmailProcesser::new(receiver);
     loop {
-        // processer.wait_new_email()?;
+        processer.wait_new_email()?;
         processer.fetch_new_emails()?;
-        tokio::time::sleep(tokio::time::Duration::from_millis(5000)).await;
+        // tokio::time::sleep(tokio::time::Duration::from_millis(5000)).await;
     }
     // loop {
     //     receiver.wait_new_email()?;
