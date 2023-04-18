@@ -24,6 +24,7 @@ impl EmailProcesser {
 
     pub fn fetch_new_emails(&mut self) -> Result<()> {
         let fetches = self.imap_client.retrieve_new_emails()?;
+        // println!("The number of fetched emails: {}", fetches.len());
         for fetched in fetches.into_iter() {
             for fetch in fetched.into_iter() {
                 match self.fetch_one_email(fetch) {
@@ -55,7 +56,10 @@ impl EmailProcesser {
         let envelope = fetch.envelope().ok_or(anyhow!("No envelope"))?;
         let subject = envelope.subject.ok_or(anyhow!("No subject"))?;
         println!("subject {:?}", subject);
-        let subject_str = String::from_utf8(subject.to_vec())?;
+        let subject_str = {
+            let tag = envelope.subject.ok_or(anyhow!("No subject"))?;
+            String::from_utf8(tag.to_vec())?
+        };
         println!("subject_str {}", subject_str);
         let subject_regex = Regex::new(Self::SUBJECT_REGEX)?;
         let manipulation_id = subject_regex
@@ -64,6 +68,40 @@ impl EmailProcesser {
             .as_str()
             .parse::<usize>()?;
         println!("manipulation_id {}", manipulation_id);
+        let from_addr = {
+            let tag = envelope.from.as_ref();
+            println!("from {:?}", tag.ok_or(anyhow!("No from"))?[0]);
+            let former = tag.ok_or(anyhow!("No from"))?[0]
+                .mailbox
+                .ok_or(anyhow!("No former part of the from address"))?;
+            let latter = tag.ok_or(anyhow!("No from"))?[0]
+                .host
+                .ok_or(anyhow!("No latter part of the from address"))?;
+            let address = format!(
+                "{}@{}",
+                String::from_utf8(former.to_vec())?,
+                String::from_utf8(latter.to_vec())?
+            );
+            address
+        };
+        println!("from adress {}", from_addr);
+        let to_addr = {
+            let tag = envelope.to.as_ref();
+            println!("to {:?}", tag.ok_or(anyhow!("No to"))?[0]);
+            let former = tag.ok_or(anyhow!("No to"))?[0]
+                .mailbox
+                .ok_or(anyhow!("No former part of the to address"))?;
+            let latter = tag.ok_or(anyhow!("No to"))?[0]
+                .host
+                .ok_or(anyhow!("No latter part of the to address"))?;
+            let address = format!(
+                "{}@{}",
+                String::from_utf8(former.to_vec())?,
+                String::from_utf8(latter.to_vec())?
+            );
+            address
+        };
+        println!("to adress {}", to_addr);
         let email_bytes = fetch.body().ok_or(anyhow!("No body"))?;
         // self.prover.push_email(email_bytes)?;
         Ok(())

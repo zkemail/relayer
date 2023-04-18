@@ -50,8 +50,11 @@ impl<'a> Authenticator for OAuthed {
 
 impl ImapClient {
     pub async fn construct(domain_name: &str, port: u16, auth: IMAPAuth) -> Result<Self> {
+        println!("Trying to construct...");
         let tls = native_tls::TlsConnector::builder().build()?;
+        println!("Beginning connection process to IMAP server...");
         let client = imap::connect((domain_name, port), domain_name, &tls)?;
+        println!("IMAP client connected to {:?} {:?}", domain_name, client);
         let mut imap_session = match auth {
             IMAPAuth::Password { id, password } => client.login(id, password).map_err(|e| e.0),
             IMAPAuth::OAuth {
@@ -107,9 +110,6 @@ impl ImapClient {
         let uids = self.imap_session.uid_search("UNSEEN")?;
         let mut fetches = vec![];
         for (idx, uid) in uids.into_iter().enumerate() {
-            if idx >= 10 {
-                break;
-            }
             println!("uid {}", uid);
             let fetched = self
                 .imap_session

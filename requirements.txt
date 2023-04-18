@@ -1,0 +1,3 @@
+modal_client==0.48.1864
+python-dotenv==1.0.0
+watchdog==3.0.0
