@@ -1,5 +1,6 @@
 mod imap_client;
-pub mod parse_email;
+mod prover;
+// pub mod parse_email;
 mod processer;
 mod sh_caller;
 use anyhow::{anyhow, Result};
@@ -14,8 +15,9 @@ use axum::{
 use dotenv::dotenv;
 use duct::cmd;
 use futures_util::stream::StreamExt;
-use imap_client::{EmailReceiver, IMAPAuth};
-use parse_email::*;
+use imap_client::{IMAPAuth, ImapClient};
+// use parse_email::*;
+use processer::EmailProcesser;
 use regex::Regex;
 use reqwest::Client;
 use serde::Deserialize;
@@ -267,39 +269,44 @@ async fn main() -> Result<()> {
         panic!("Not supported auth type.");
     };
 
-    let mut receiver = EmailReceiver::construct(&domain_name, port, imap_auth).await?;
+    let receiver = ImapClient::construct(&domain_name, port, imap_auth).await?;
+    let mut processer = EmailProcesser::new(receiver);
     loop {
-        receiver.wait_new_email()?;
-        println!("new email!");
-        let fetches = receiver.retrieve_new_emails()?;
-        for fetched in fetches.into_iter() {
-            for fetch in fetched.into_iter() {
-                if let Some(e) = fetch.envelope() {
-                    println!(
-                        "from: {}",
-                        String::from_utf8(e.from.as_ref().unwrap()[0].name.unwrap().to_vec())
-                            .unwrap()
-                    );
-                    // println!(
-                    //     "to: {}",
-                    //     String::from_utf8(e.to.as_ref().unwrap()[0].name.unwrap().to_vec())
-                    //         .unwrap()
-                    // );
-                    let subject_str = String::from_utf8(e.subject.unwrap().to_vec()).unwrap();
-                    println!("subject: {}", subject_str);
-                } else {
-                    println!("no envelope");
-                    break;
-                }
-                if let Some(b) = fetch.body() {
-                    let body = String::from_utf8(b.to_vec())?;
-                    println!("body: {}", body);
-                } else {
-                    println!("no body");
-                    break;
-                }
-            }
-        }
-        // tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+        processer.wait_new_email()?;
+        processer.fetch_new_emails()?;
     }
+    // loop {
+    //     receiver.wait_new_email()?;
+    //     println!("new email!");
+    //     let fetches = receiver.retrieve_new_emails()?;
+    //     for fetched in fetches.into_iter() {
+    //         for fetch in fetched.into_iter() {
+    //             if let Some(e) = fetch.envelope() {
+    //                 println!(
+    //                     "from: {}",
+    //                     String::from_utf8(e.from.as_ref().unwrap()[0].name.unwrap().to_vec())
+    //                         .unwrap()
+    //                 );
+    //                 // println!(
+    //                 //     "to: {}",
+    //                 //     String::from_utf8(e.to.as_ref().unwrap()[0].name.unwrap().to_vec())
+    //                 //         .unwrap()
+    //                 // );
+    //                 let subject_str = String::from_utf8(e.subject.unwrap().to_vec()).unwrap();
+    //                 println!("subject: {}", subject_str);
+    //             } else {
+    //                 println!("no envelope");
+    //                 break;
+    //             }
+    //             if let Some(b) = fetch.body() {
+    //                 let body = String::from_utf8(b.to_vec())?;
+    //                 println!("body: {}", body);
+    //             } else {
+    //                 println!("no body");
+    //                 break;
+    //             }
+    //         }
+    //     }
+    //     // tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+    // }
 }

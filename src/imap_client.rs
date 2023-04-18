@@ -13,7 +13,7 @@ use std::net::TcpStream;
 use std::slice::Iter;
 
 #[derive(Debug)]
-pub struct EmailReceiver {
+pub struct ImapClient {
     imap_session: Session<TlsStream<TcpStream>>,
 }
 
@@ -48,7 +48,7 @@ impl<'a> Authenticator for OAuthed {
     }
 }
 
-impl EmailReceiver {
+impl ImapClient {
     pub async fn construct(domain_name: &str, port: u16, auth: IMAPAuth) -> Result<Self> {
         let tls = native_tls::TlsConnector::builder().build()?;
         let client = imap::connect((domain_name, port), domain_name, &tls)?;
