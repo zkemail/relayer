@@ -9,6 +9,8 @@ use ethers::prelude::*;
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
 // use hex;
+use crate::config::{LOGIN_ID_KEY, LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY};
+use crate::smtp_client::EmailSenderClient;
 use hex_literal::hex;
 use k256::ecdsa::SigningKey;
 use rand::thread_rng;
@@ -57,7 +59,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 fn get_calldata(dir: Option<&str>, nonce: Option<&str>) -> Result<CircomCalldata, Box<dyn Error>> {
     // Provide default values if arguments are not specified
     let dir = dir.unwrap_or("");
-    let nonce = nonce.unwrap_or("17689783363368087877");
+    let nonce = nonce.unwrap_or("");
 
     // Call the main function with the specified or default values
     parse_files_into_calldata(dir, nonce)
@@ -184,6 +186,25 @@ pub async fn send_to_chain(
     println!("Calling contract fn: {:?}", call);
     let pending_tx = call.send().await?;
     println!("Transaction hash: {:?}", pending_tx);
-
+    reply_with_etherscan(nonce, pending_tx.tx_hash());
     Ok(())
+}
+
+fn reply_with_etherscan(nonce: &str, tx_hash: H256) {
+    let etherscan_url = format!("https://goerli.etherscan.io/tx/{}", tx_hash.to_string());
+    let reply = format!(
+        "Transaction sent! View Etherscan confirmation: {}.",
+        etherscan_url
+    );
+    println!("Replying with confirmation...{}", reply);
+
+    dotenv().ok();
+    let mut sender: EmailSenderClient = EmailSenderClient::new(
+        env::var(LOGIN_ID_KEY).unwrap().as_str(),
+        env::var(LOGIN_PASSWORD_KEY).unwrap().as_str(),
+        Some(env::var(SMTP_DOMAIN_NAME_KEY).unwrap().as_str()),
+    );
+    // Read raw email from received_eml/wallet_{nonce}.eml
+    let raw_email = fs::read_to_string(format!("./received_eml/wallet_{}.eml", nonce)).unwrap();
+    let confirmation = sender.reply_all(&raw_email, &reply);
 }

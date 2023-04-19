@@ -11,6 +11,7 @@ use lettre::{
 };
 
 // use mailparse::Mail;
+use crate::config::{SMTP_DOMAIN_NAME_KEY, SMTP_PORT_KEY};
 use native_tls::{Protocol, TlsConnector};
 use std::error::Error;
 
@@ -67,13 +68,10 @@ impl EmailSenderClient {
             }
         }
 
-        // TODO: Add all of the to and cc fields in
         // Create the email sender's Mailbox
         let sender = Mailbox::new(None, self.email_id.parse::<Address>()?);
 
         let mut email = Message::builder()
-            .from(sender.clone())
-            // .to(original_to)
             // .cc(original_cc)
             .subject(format!("Re: {}", original_subject))
             .in_reply_to(in_reply_to);
