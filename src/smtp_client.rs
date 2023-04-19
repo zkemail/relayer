@@ -30,7 +30,7 @@ impl EmailSenderClient {
             .unwrap()
             .credentials(creds)
             .build();
-
+        println!("SMTP client initialized");
         Self {
             email_id: email_id.to_owned(),
             transport: client,
@@ -106,6 +106,7 @@ impl EmailSenderClient {
         }
 
         let message = email.body(reply_body.as_bytes().to_vec())?;
+        println!("Sending email reply: {:?}", message);
 
         self.transport.send(&message)?;
         Ok(())

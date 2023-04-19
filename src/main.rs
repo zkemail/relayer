@@ -105,9 +105,14 @@ pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) {
     let re = Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc) to (.+@.+(\..+)+)").unwrap();
     let subject_regex = re.clone();
     if subject_regex.is_match(subject.as_str()) {
+        println!("Send valid! Validating proof...");
         let custom_reply = format!("{} on Ethereum", subject);
         let confirmation = emailer.reply_all(raw_email, "Send valid! Validating proof...");
         // .await;
+    } else {
+        println!("Send invalid! Regex failed...");
+        let custom_reply = format!("{} on Ethereum", subject);
+        let confirmation = emailer.reply_all(raw_email, "Send invalid! Please try again.");
     }
 }
 
