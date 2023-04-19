@@ -111,52 +111,6 @@ pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) {
     }
 }
 
-// Helper function to send a reply to a retrieved email
-pub async fn send_reply(
-    previous_email: &str,
-    reply_body: &str,
-    gmail_account: &str,
-    gmail_app_password: &str,
-) -> Result<()> {
-    // Parse the email to extract sender, subject, and message ID
-    // let mail: ParsedMail = mailparse::parse_mail(previous_email.as_bytes())?;
-    // let from = mail.headers.get_first_value("From").unwrap();
-    // let subject = mail.headers.get_first_value("Subject").unwrap();
-    // let message_id = mail.headers.get_first_value("Message-ID").unwrap();
-    // // Create the email message
-    // let email = Message::builder()
-    //     .from(Mailbox::new(None, gmail_account.parse()?))
-    //     .to(from.parse()?)
-    //     .subject(format!("Re: {}", subject))
-    //     .header(header::ReplyTo(message_id.parse()?))
-    //     .header(header::References(vec![message_id.parse()?]))
-    //     .multipart(
-    //         MultiPart::mixed()
-    //             .singlepart(
-    //                 SinglePart::plain()
-    //                     .header(header::ContentType("text/plain; charset=utf8".parse()?))
-    //                     .body(reply_body.to_string()),
-    //             )
-    //             .singlepart(
-    //                 SinglePart::builder()
-    //                     .header(header::ContentType("text/plain; charset=utf8".parse()?))
-    //                     .body(original_body.to_string()),
-    //             ),
-    //     )?;
-    // println!("Email: {:?}", email);
-
-    // // Configure the SMTP transport with Gmail's SMTP server and app password
-    // let creds = Credentials::new(gmail_account.to_string(), gmail_app_password.to_string());
-    // let mailer = SmtpTransport::relay("smtp.gmail.com")?
-    //     .credentials(creds)
-    //     .build();
-
-    // // Send the email
-    // mailer.send(&email)?;
-
-    Ok(())
-}
-
 const SMTP_DOMAIN_NAME_KEY: &'static str = "SMTP_DOMAIN_NAME";
 const SMTP_PORT_KEY: &'static str = "SMTP_PORT";
 
