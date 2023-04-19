@@ -96,7 +96,7 @@ async fn handle_email(raw_email: String, zk_email_circom_dir: &String) {
     // println!("Response status: {}", response.status());
 }
 
-pub async fn validate_email(raw_email: &str, gmail_id: &str, gmail_app_password: &str) {
+pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) {
     let mut subject = extract_subject(&raw_email).unwrap();
     let mut from = extract_from(&raw_email).unwrap();
     println!("Subject, from: {:?} {:?}", subject, from);
@@ -106,13 +106,8 @@ pub async fn validate_email(raw_email: &str, gmail_id: &str, gmail_app_password:
     let subject_regex = re.clone();
     if subject_regex.is_match(subject.as_str()) {
         let custom_reply = format!("{} on Ethereum", subject);
-        let confirmation = send_reply(
-            raw_email,
-            "Send valid! Validating proof...",
-            gmail_id,
-            gmail_app_password,
-        )
-        .await;
+        let confirmation = emailer.reply_all(raw_email, "Send valid! Validating proof...");
+        // .await;
     }
 }
 
@@ -236,12 +231,7 @@ async fn main() -> Result<()> {
                 if let Some(b) = fetch.body() {
                     let body = String::from_utf8(b.to_vec())?;
                     println!("body: {}", body);
-                    validate_email(
-                        &body.as_str(),
-                        &env::var(IMAP_LOGIN_ID_KEY)?.as_str(),
-                        &env::var(IMAP_LOGIN_PASSWORD_KEY)?.as_str(),
-                    )
-                    .await;
+                    validate_email(&body.as_str(), &sender).await;
                     handle_email(body, &zk_email_circom_path).await;
                     // let values = parse_external_eml(&body).await.unwrap();
                     // println!("values: {:?}", values);

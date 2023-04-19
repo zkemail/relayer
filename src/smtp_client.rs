@@ -14,6 +14,7 @@ use lettre::{
 use native_tls::{Protocol, TlsConnector};
 use std::error::Error;
 
+#[derive(Clone)]
 pub struct EmailSenderClient {
     email_id: String,
     transport: SmtpTransport,
@@ -36,7 +37,7 @@ impl EmailSenderClient {
         }
     }
 
-    pub fn reply_all(&mut self, raw_email: &str, reply_body: &str) -> Result<(), Box<dyn Error>> {
+    pub fn reply_all(&self, raw_email: &str, reply_body: &str) -> Result<(), Box<dyn Error>> {
         let mut original_to = vec![];
         let mut original_cc = vec![];
         let mut original_from = None;

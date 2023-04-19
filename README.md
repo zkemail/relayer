@@ -1,6 +1,6 @@
 # Relayer
 
-A permissionless Rust Axum webserver relayer service that reads email and responds to it. Uses IMAP.
+A permissionless Rust Axum webserver relayer service that reads email and responds to it. Uses IMAP to receive email and SMTP to send replies.
 
 Goerli Wallet Address (circom-only): 0x3b3857eaf44804cce00449b7fd40310e6de6496e
 
@@ -32,6 +32,14 @@ ip -4 -o addr show scope global | awk '{print $4}' && ip -6 -o addr show scope g
 
 Note that you'll have to populate the build folder, run `make` in `zk-email-verify/build/email/email_cpp`, and install rapidsnark according to the zk-email-verify README.
 
+### Test Chain
+
+Test chain connection to verify that your connection to the chain works and simple tx's will send.
+
+```
+cargo run --bin chain
+```
+
 ## Run
 
 First, run the relayer.
@@ -40,13 +48,9 @@ First, run the relayer.
 cargo run --bin relayer
 ```
 
-Test chain connection to verify that your connection to the chain works and simple tx's will send.
+### Test proofgen
 
-```
-cargo run --bin chain
-```
-
-To test the proofgen, send `relayer@sendeth.org` an email then run
+To test the proofgen when the relayer is running, send `relayer@sendeth.org` an email then run
 
 ```
 ./src/cirom_proofgen.sh
@@ -61,7 +65,9 @@ pip3 install --r requirements.txt
 python3 coordinator.py
 ```
 
-## External Setup
+## Server Setup
+
+We don't use this server anymore, but if you'd like to call these functions via endpoints, you can use this nginx setup.
 
 ### Turn on nginx
 
@@ -103,6 +109,7 @@ server {
 ```
 
 We rely on gmail for IMAP, but if you want your own server, you can add thiss:
+
 ```
 mail {
     server_name sendeth.com;
@@ -174,6 +181,7 @@ Then, enable inbound traffic. To do so, follow these steps:
 3. Find the security group associated with your EC2 instance and click on its name.
 4. Click on the "Inbound rules" tab.
 5. For the server, check if there are rules allowing traffic on ports 80 and 443. If not, add the rules by clicking on "Edit inbound rules" and then "Add rule". Choose "HTTP" for port 80 and "HTTPS" for port 443, and set the source to "Anywhere" or "0.0.0.0/0" (IPv4) and "::/0" (IPv6). For IMAP, click on "Add rule" and create new rules for the necessary IMAP ports (143 and 993) with the following settings:
+
 - Type: Custom TCP
 - Protocol: TCP
 - Port Range: 143 (for IMAP) or 993 (for IMAPS)
