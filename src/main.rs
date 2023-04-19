@@ -2,6 +2,7 @@ mod chain;
 mod imap_client;
 pub mod parse_email;
 mod processer;
+mod smtp_client;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use axum::{
@@ -16,15 +17,14 @@ use dotenv::dotenv;
 use duct::cmd;
 use futures_util::stream::StreamExt;
 use imap_client::{EmailReceiver, IMAPAuth};
-// use lettre::message::{header, Mailbox, Message, MultiPart, SinglePart};
-// use lettre::transport::smtp::authentication::Credentials;
-// use lettre::{SmtpTransport, Transport};
+use mailparse::{self, MailHeaderMap, ParsedMail};
 use parse_email::*;
 use regex::Regex;
 use reqwest;
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
+use smtp_client::EmailSenderClient;
 // use sh_caller::run_commands;
 use std::fs::File;
 use std::io::Read;
@@ -52,11 +52,6 @@ struct EmailEvent {
 }
 
 async fn handle_email(raw_email: String, zk_email_circom_dir: &String) {
-    let hash = {
-        let mut hasher = DefaultHasher::new();
-        raw_email.hash(&mut hasher);
-        hasher.finish()
-    };
     let mut subject = extract_subject(&raw_email).unwrap();
     let mut from = extract_from(&raw_email).unwrap();
     println!("Subject, from: {:?} {:?}", subject, from);
@@ -72,6 +67,12 @@ async fn handle_email(raw_email: String, zk_email_circom_dir: &String) {
     // }
 
     // Path 1: Write raw_email to ../wallet_{hash}.eml
+    let hash = {
+        let mut hasher = DefaultHasher::new();
+        raw_email.hash(&mut hasher);
+        hasher.finish()
+    };
+
     let file_path = format!("{}/wallet_{}.eml", "./received_eml", hash);
     match fs::write(file_path.clone(), raw_email.clone()) {
         Ok(_) => println!("Email data written successfully to {}", file_path),
@@ -95,45 +96,74 @@ async fn handle_email(raw_email: String, zk_email_circom_dir: &String) {
     // println!("Response status: {}", response.status());
 }
 
+pub async fn validate_email(raw_email: &str, gmail_id: &str, gmail_app_password: &str) {
+    let mut subject = extract_subject(&raw_email).unwrap();
+    let mut from = extract_from(&raw_email).unwrap();
+    println!("Subject, from: {:?} {:?}", subject, from);
+
+    // Validate subject, and send rejection/reformatting email if necessary
+    let re = Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc) to (.+@.+(\..+)+)").unwrap();
+    let subject_regex = re.clone();
+    if subject_regex.is_match(subject.as_str()) {
+        let custom_reply = format!("{} on Ethereum", subject);
+        let confirmation = send_reply(
+            raw_email,
+            "Send valid! Validating proof...",
+            gmail_id,
+            gmail_app_password,
+        )
+        .await;
+    }
+}
+
 // Helper function to send a reply to a retrieved email
-// pub fn send_reply(
-//     body: &str,
-//     reply_body: &str,
-//     gmail_account: &str,
-//     gmail_app_password: &str,
-// ) -> Result<()> {
-//     // Parse the email to extract sender, subject, and message ID
-//     let mail: ParsedMail = mailparse::parse_mail(body)?;
-//     let from = mail.headers.get_first_value("From")?;
-//     let subject = mail.headers.get_first_value("Subject")?;
-//     let message_id = mail.headers.get_first_value("Message-ID")?;
+pub async fn send_reply(
+    previous_email: &str,
+    reply_body: &str,
+    gmail_account: &str,
+    gmail_app_password: &str,
+) -> Result<()> {
+    // Parse the email to extract sender, subject, and message ID
+    // let mail: ParsedMail = mailparse::parse_mail(previous_email.as_bytes())?;
+    // let from = mail.headers.get_first_value("From").unwrap();
+    // let subject = mail.headers.get_first_value("Subject").unwrap();
+    // let message_id = mail.headers.get_first_value("Message-ID").unwrap();
+    // // Create the email message
+    // let email = Message::builder()
+    //     .from(Mailbox::new(None, gmail_account.parse()?))
+    //     .to(from.parse()?)
+    //     .subject(format!("Re: {}", subject))
+    //     .header(header::ReplyTo(message_id.parse()?))
+    //     .header(header::References(vec![message_id.parse()?]))
+    //     .multipart(
+    //         MultiPart::mixed()
+    //             .singlepart(
+    //                 SinglePart::plain()
+    //                     .header(header::ContentType("text/plain; charset=utf8".parse()?))
+    //                     .body(reply_body.to_string()),
+    //             )
+    //             .singlepart(
+    //                 SinglePart::builder()
+    //                     .header(header::ContentType("text/plain; charset=utf8".parse()?))
+    //                     .body(original_body.to_string()),
+    //             ),
+    //     )?;
+    // println!("Email: {:?}", email);
 
-//     // Create the email message
-//     let email = Message::builder()
-//         .from(Mailbox::new(None, gmail_account.parse()?))
-//         .to(from.parse()?)
-//         .subject(format!("Re: {}", subject))
-//         .header(header::InReplyTo(message_id.parse()?))
-//         .header(header::References(vec![message_id.parse()?]))
-//         .multipart(
-//             MultiPart::mixed().singlepart(
-//                 SinglePart::plain()
-//                     .header(header::ContentType("text/plain; charset=utf8".parse()?))
-//                     .body(reply_body.to_string()),
-//             ),
-//         )?;
+    // // Configure the SMTP transport with Gmail's SMTP server and app password
+    // let creds = Credentials::new(gmail_account.to_string(), gmail_app_password.to_string());
+    // let mailer = SmtpTransport::relay("smtp.gmail.com")?
+    //     .credentials(creds)
+    //     .build();
 
-//     // Configure the SMTP transport with Gmail's SMTP server and app password
-//     let creds = Credentials::new(gmail_account.to_string(), gmail_app_password.to_string());
-//     let mailer = SmtpTransport::relay("smtp.gmail.com")?
-//         .credentials(creds)
-//         .build();
+    // // Send the email
+    // mailer.send(&email)?;
 
-//     // Send the email
-//     mailer.send(&email)?;
+    Ok(())
+}
 
-//     Ok(())
-// }
+const SMTP_DOMAIN_NAME_KEY: &'static str = "SMTP_DOMAIN_NAME";
+const SMTP_PORT_KEY: &'static str = "SMTP_PORT";
 
 const IMAP_DOMAIN_NAME_KEY: &'static str = "IMAP_DOMAIN_NAME";
 const IMAP_PORT_KEY: &'static str = "IMAP_PORT";
@@ -145,6 +175,7 @@ const IMAP_CLIENT_SECRET_KEY: &'static str = "IMAP_CLIENT_SECRET";
 const IMAP_AUTH_URL_KEY: &'static str = "IMAP_AUTH_URL";
 const IMAP_TOKEN_URL_KEY: &'static str = "IMAP_TOKEN_URL";
 const IMAP_REDIRECT_URL_KEY: &'static str = "IMAP_REDIRECT_URL";
+
 const ZK_EMAIL_PATH_KEY: &'static str = "ZK_EMAIL_CIRCOM_PATH";
 
 #[tokio::main]
@@ -174,6 +205,11 @@ async fn main() -> Result<()> {
     };
 
     let mut receiver = EmailReceiver::construct(&domain_name, port, imap_auth).await?;
+    let mut sender: EmailSenderClient = EmailSenderClient::new(
+        env::var(IMAP_LOGIN_ID_KEY)?.as_str(),
+        env::var(IMAP_LOGIN_PASSWORD_KEY)?.as_str(),
+        Some(env::var(SMTP_DOMAIN_NAME_KEY)?.as_str()),
+    );
     loop {
         receiver.wait_new_email()?;
         println!("new email!");
@@ -200,6 +236,12 @@ async fn main() -> Result<()> {
                 if let Some(b) = fetch.body() {
                     let body = String::from_utf8(b.to_vec())?;
                     println!("body: {}", body);
+                    validate_email(
+                        &body.as_str(),
+                        &env::var(IMAP_LOGIN_ID_KEY)?.as_str(),
+                        &env::var(IMAP_LOGIN_PASSWORD_KEY)?.as_str(),
+                    )
+                    .await;
                     handle_email(body, &zk_email_circom_path).await;
                     // let values = parse_external_eml(&body).await.unwrap();
                     // println!("values: {:?}", values);
