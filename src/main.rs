@@ -1,7 +1,7 @@
-mod chain;
-pub mod config;
+// mod chain;
+mod config;
 mod imap_client;
-pub mod parse_email;
+mod parse_email;
 mod processer;
 mod smtp_client;
 use anyhow::{anyhow, Result};
@@ -13,7 +13,7 @@ use axum::{
     routing::post,
     Router,
 };
-use chain::send_to_chain;
+// use chain::send_to_chain;
 use config::{
     IMAP_AUTH_TYPE_KEY, IMAP_AUTH_URL_KEY, IMAP_CLIENT_ID_KEY, IMAP_CLIENT_SECRET_KEY,
     IMAP_DOMAIN_NAME_KEY, IMAP_PORT_KEY, IMAP_REDIRECT_URL_KEY, IMAP_TOKEN_URL_KEY, LOGIN_ID_KEY,
@@ -103,6 +103,8 @@ pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) {
             let amount = captures.get(1).map_or("", |m| m.as_str());
             let recipient = captures.get(4).map_or("", |m| m.as_str());
             custom_reply = format!("Valid send initiated. Sending {} eth to {} on Ethereum. We will follow up with Etherscan link when finished!", amount, recipient);
+        } else {
+            custom_reply = "Send seems to match regex but is invalid! Please try again with this subject: \"Send _ eth to __@__.___\"".to_string();
         }
         println!("Send valid! Validating proof...");
         // .await;

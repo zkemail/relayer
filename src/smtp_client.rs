@@ -67,12 +67,18 @@ impl EmailSenderClient {
                 original_subject = line.trim_start_matches("Subject:").trim().to_string();
             }
         }
-
+        println!(
+            "Parsed email headers: {:?} {:?} {:?} {:?} {:?}",
+            original_to, original_cc, original_from, in_reply_to, original_subject
+        );
         // Create the email sender's Mailbox
-        let sender = Mailbox::new(None, self.email_id.parse::<Address>()?);
+        let sender = Mailbox::new(
+            Some("Relayer".to_string()),
+            self.email_id.parse::<Address>()?,
+        );
 
         let mut email = Message::builder()
-            // .cc(original_cc)
+            .from(sender.clone())
             .subject(format!("Re: {}", original_subject))
             .in_reply_to(in_reply_to);
 
@@ -82,7 +88,6 @@ impl EmailSenderClient {
                 email = email.to(mbox);
             }
         }
-
         for to in original_to {
             let mboxes: Mailboxes = to.into();
             for mbox in mboxes {
@@ -103,10 +108,18 @@ impl EmailSenderClient {
             }
         }
 
-        let message = email.body(reply_body.as_bytes().to_vec())?;
-        println!("Sending email reply: {:?}", message);
+        let message = match email.body(reply_body.as_bytes().to_vec()) {
+            Ok(m) => m,
+            Err(e) => {
+                println!("Error building email: {:?}", e);
+                return Err(Box::new(e));
+            }
+        };
 
+        println!("Sending email reply-all: {:?}", message);
         self.transport.send(&message)?;
+        println!("Sent email reply!");
+
         Ok(())
     }
 }

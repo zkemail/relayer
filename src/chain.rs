@@ -2,6 +2,12 @@ use ethers_core::types::{Address, U256};
 // use ethers_core::utils::CompiledContract;
 // use ethers_providers::{Http, Middleware, Provider};
 // use ethers_signers::{LocalWallet, Signer};
+mod config;
+mod imap_client;
+mod parse_email;
+mod processer;
+mod smtp_client;
+
 use dotenv::dotenv;
 use ethers::abi::Abi;
 use ethers::core::types::TransactionRequest;
@@ -191,7 +197,7 @@ pub async fn send_to_chain(
 }
 
 fn reply_with_etherscan(nonce: &str, tx_hash: H256) {
-    let etherscan_url = format!("https://goerli.etherscan.io/tx/{}", tx_hash.to_string());
+    let etherscan_url = format!("https://goerli.etherscan.io/tx/{:x}", tx_hash);
     let reply = format!(
         "Transaction sent! View Etherscan confirmation: {}.",
         etherscan_url
