@@ -1,7 +1,7 @@
-mod chain;
-pub mod config;
+// mod chain;
+mod config;
 mod imap_client;
-pub mod parse_email;
+mod parse_email;
 mod processer;
 mod smtp_client;
 use anyhow::{anyhow, Result};
@@ -13,7 +13,7 @@ use axum::{
     routing::post,
     Router,
 };
-use chain::send_to_chain;
+// use chain::send_to_chain;
 use config::{
     IMAP_AUTH_TYPE_KEY, IMAP_AUTH_URL_KEY, IMAP_CLIENT_ID_KEY, IMAP_CLIENT_SECRET_KEY,
     IMAP_DOMAIN_NAME_KEY, IMAP_PORT_KEY, IMAP_REDIRECT_URL_KEY, IMAP_TOKEN_URL_KEY, LOGIN_ID_KEY,
