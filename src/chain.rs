@@ -37,14 +37,9 @@ struct CircomCalldata {
 
 // Call like: cargo run --bin chain -- <proof_outputs_dir> <nonce>
 // Define a new function that takes optional arguments and provides default values
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    let args: Vec<String> = env::args().collect();
-
-    // Provide default values if arguments are not specified
-    let dir = args.get(1).map_or("", String::as_str);
-    let nonce = args.get(2).map_or("17689783363368087877", String::as_str);
-
+// Running with test=true overrides the RPC URL to default to localhost no matter what
+// TODO: replace test=true with rpc url instead
+async fn run(test: bool, dir: &str, nonce: &str) -> Result<(), Box<dyn Error>> {
     // Call the main function with the specified or default values
     let calldata = get_calldata(Some(dir), Some(nonce)).unwrap();
     println!("Calldata: {:?}", calldata);
@@ -59,6 +54,35 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     }
     Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    let args: Vec<String> = env::args().collect();
+
+    // Provide default values if arguments are not specified
+    let dir = args.get(1).map_or("", String::as_str);
+    let nonce = args.get(2).map_or("", String::as_str);
+
+    // Call the run function with the specified or default values
+    run(false, dir, nonce).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_run_with_defaults() {
+        let dir = "";
+        let nonce = "17689783363368087877";
+
+        println!("Make sure anvil is running on localhost:8548.");
+
+        // Call the run function with default values in the test
+        let result = run(true, dir, nonce).await;
+        assert!(result.is_ok());
+    }
 }
 
 // Define a new function that takes optional arguments and provides default values
@@ -149,17 +173,11 @@ pub async fn send_to_chain(
     let rpcurl = if test {
         "http://localhost:8548".to_string()
     } else {
-        format!("https://eth-goerli.alchemyapi.io/v2/{}", alchemy_api_key)
+        std::env::var("RPC_URL").expect("The RPC_URL environment variable must be set")
     };
 
     let provider = Provider::<Http>::try_from(rpcurl)?;
-    let wallet = if test {
-        // Wallet from randomness
-        let mut rng = thread_rng();
-        LocalWallet::new(&mut rng)
-    } else {
-        LocalWallet::from_str(&private_key_hex)?
-    };
+    let wallet = LocalWallet::from_str(&private_key_hex)?;
 
     println!("Wallet address: {}", wallet.address());
 
