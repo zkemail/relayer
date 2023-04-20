@@ -103,6 +103,8 @@ pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) {
             let amount = captures.get(1).map_or("", |m| m.as_str());
             let recipient = captures.get(4).map_or("", |m| m.as_str());
             custom_reply = format!("Valid send initiated. Sending {} eth to {} on Ethereum. We will follow up with Etherscan link when finished!", amount, recipient);
+        } else {
+            custom_reply = "Send seems to match regex but is invalid! Please try again with this subject: \"Send _ eth to __@__.___\"".to_string();
         }
         println!("Send valid! Validating proof...");
         // .await;

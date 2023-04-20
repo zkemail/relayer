@@ -197,7 +197,7 @@ pub async fn send_to_chain(
 }
 
 fn reply_with_etherscan(nonce: &str, tx_hash: H256) {
-    let etherscan_url = format!("https://goerli.etherscan.io/tx/{}", tx_hash.to_string());
+    let etherscan_url = format!("https://goerli.etherscan.io/tx/{:x}", tx_hash);
     let reply = format!(
         "Transaction sent! View Etherscan confirmation: {}.",
         etherscan_url

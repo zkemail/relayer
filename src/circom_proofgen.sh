@@ -31,6 +31,7 @@ if [ $status0 -ne 0 ]; then
     exit 1
 fi
 
+echo "/${build_dir}/${CIRCUIT_NAME}_cpp/email ${input_wallet_path} ${witness_path}"
 "/${build_dir}/${CIRCUIT_NAME}_cpp/email" "${input_wallet_path}" "${witness_path}"
 status_c_wit=$?
 
@@ -40,6 +41,7 @@ if [ $status_c_wit -ne 0 ]; then
     exit 1
 fi
 
+echo "${HOME}/rapidsnark/build/prover ${build_dir}/${CIRCUIT_NAME}.zkey ${witness_path} ${proof_path} ${public_path}"
 "${HOME}/rapidsnark/build/prover" "${build_dir}/${CIRCUIT_NAME}.zkey" "${witness_path}" "${proof_path}" "${public_path}"
 status2=$?
 
@@ -50,6 +52,7 @@ fi
 
 echo "Finished proofgen! Status: ${status2}"
 
+echo "./target/debug/chain ${prover_output_path} ${nonce}"
 ./target/debug/chain "${prover_output_path}" "${nonce}"
 status3=$?
 if [ $status3 -ne 0 ]; then
