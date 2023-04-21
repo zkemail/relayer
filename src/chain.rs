@@ -10,6 +10,7 @@ mod smtp_client;
 
 use dotenv::dotenv;
 use ethers::abi::Abi;
+use ethers::contract::ContractError;
 use ethers::core::types::TransactionRequest;
 use ethers::prelude::*;
 use ethers::providers::{Http, Middleware, Provider};
@@ -26,6 +27,7 @@ use std::env;
 use std::error::Error;
 use std::fs;
 use std::str::{self, FromStr};
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 struct CircomCalldata {
@@ -45,14 +47,14 @@ async fn run(test: bool, dir: &str, nonce: &str) -> Result<(), Box<dyn Error>> {
     println!("Calldata: {:?}", calldata);
 
     // Call the main function with the specified or default values
-    match send_to_chain(true, dir, nonce).await {
+    match send_to_chain(test, dir, nonce).await {
         Ok(_) => {
             println!("Successfully sent to chain.");
         }
         Err(err) => {
-            eprintln!("Error to send to chain at {}: {}", line!(), err);
+            eprintln!("Error sending to chain: {}", err);
         }
-    }
+    };
     Ok(())
 }
 
@@ -193,29 +195,44 @@ pub async fn send_to_chain(
     // Convert the JSON value to the Abi type
     let abi: Abi = serde_json::from_value(abi_json)?;
 
-    let contract = Contract::new(contract_address, abi, provider.into());
+    println!("Provider: {:?}", provider);
+    // TODO: Hardcoded chain id
+    let chain_id: u64 = 5;
+    let gas_price = provider.get_gas_price().await?;
+    let signer = SignerMiddleware::new(provider, wallet.with_chain_id(chain_id));
+    let contract = ContractInstance::new(contract_address, abi, signer);
 
-    println!("Sending transaction...");
+    println!("Sending transaction with gas price {:?}...", gas_price);
 
     // Call the transfer function
-    let call = contract.method::<_, ()>(
-        "transfer",
-        (
-            calldata.pi_a,
-            calldata.pi_b,
-            calldata.pi_c,
-            calldata.signals,
-        ),
-    )?;
-    println!("Calling contract fn: {:?}", call);
-    let pending_tx = call.send().await?;
+    let call = contract
+        .method::<_, ()>(
+            "transfer",
+            (
+                calldata.pi_a,
+                calldata.pi_b,
+                calldata.pi_c,
+                calldata.signals,
+            ),
+        )?
+        .gas_price(gas_price); // Set an appropriate gas limit
+
+    println!("Calling call: {:?}", call);
+
+    let pending_tx = match call.send().await {
+        Ok(tx) => tx,
+        Err(e) => {
+            println!("Error: {:?}", e);
+            return Err(e.into());
+        }
+    };
     println!("Transaction hash: {:?}", pending_tx);
     reply_with_etherscan(nonce, pending_tx.tx_hash());
     Ok(())
 }
 
 fn reply_with_etherscan(nonce: &str, tx_hash: H256) {
-    let etherscan_url = format!("https://goerli.etherscan.io/tx/{:x}", tx_hash);
+    let etherscan_url = format!("https://goerli.etherscan.io/tx/0x{:x}", tx_hash);
     let reply = format!(
         "Transaction sent! View Etherscan confirmation: {}.",
         etherscan_url
