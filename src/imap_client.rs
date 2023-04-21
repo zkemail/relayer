@@ -13,10 +13,6 @@ use std::net::TcpStream;
 use std::slice::Iter;
 
 #[derive(Debug)]
-pub struct EmailReceiver {
-    imap_session: Session<TlsStream<TcpStream>>,
-}
-
 pub enum IMAPAuth {
     Password {
         id: String,
@@ -30,6 +26,12 @@ pub enum IMAPAuth {
         token_url: String,
         redirect_url: String,
     },
+}
+
+// We cache the domain name, port, and auth for reconnection on failure
+#[derive(Debug)]
+pub struct EmailReceiver {
+    imap_session: Session<TlsStream<TcpStream>>,
 }
 
 pub struct OAuthed {

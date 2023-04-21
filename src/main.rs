@@ -5,48 +5,23 @@ mod parse_email;
 mod processer;
 mod smtp_client;
 use anyhow::{anyhow, Result};
-use async_trait::async_trait;
-use axum::{
-    extract::{Extension, Json, Multipart, Path},
-    http::StatusCode,
-    response::IntoResponse,
-    routing::post,
-    Router,
-};
-// use chain::send_to_chain;
 use config::{
     IMAP_AUTH_TYPE_KEY, IMAP_AUTH_URL_KEY, IMAP_CLIENT_ID_KEY, IMAP_CLIENT_SECRET_KEY,
     IMAP_DOMAIN_NAME_KEY, IMAP_PORT_KEY, IMAP_REDIRECT_URL_KEY, IMAP_TOKEN_URL_KEY, LOGIN_ID_KEY,
     LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY, SMTP_PORT_KEY, ZK_EMAIL_PATH_KEY,
 };
 use dotenv::dotenv;
-use duct::cmd;
-use futures_util::stream::StreamExt;
 use imap_client::{EmailReceiver, IMAPAuth};
-use mailparse::{self, MailHeaderMap, ParsedMail};
 use parse_email::*;
 use regex::Regex;
-use reqwest;
-use reqwest::Client;
 use serde::Deserialize;
-use serde_json::Value;
 use smtp_client::EmailSenderClient;
-// use sh_caller::run_commands;
-use std::fs::File;
-use std::io::Read;
 use std::{
     collections::hash_map::DefaultHasher,
     env,
     error::Error,
     fs,
     hash::{Hash, Hasher},
-    {convert::Infallible, net::SocketAddr},
-};
-use tracing_subscriber::{
-    fmt::{Subscriber, SubscriberBuilder},
-    layer::SubscriberExt,
-    prelude::*,
-    EnvFilter,
 };
 
 #[derive(Debug, Deserialize)]

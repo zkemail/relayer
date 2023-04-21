@@ -2,3 +2,5 @@ sendgrid.env
 target/
 Cargo.lock
 .env
+received_eml/*.eml
+received_eml/*.json

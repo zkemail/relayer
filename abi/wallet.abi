@@ -1,6 +1,17 @@
 [
   {
-    "inputs": [],
+    "inputs": [
+      {
+        "internalType": "contract Verifier",
+        "name": "v",
+        "type": "address"
+      },
+      {
+        "internalType": "contract MailServer",
+        "name": "m",
+        "type": "address"
+      }
+    ],
     "stateMutability": "nonpayable",
     "type": "constructor"
   },
@@ -57,6 +68,25 @@
         "internalType": "uint16",
         "name": "",
         "type": "uint16"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "email",
+        "type": "string"
+      }
+    ],
+    "name": "getBalance",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -186,34 +216,13 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256[2]",
-        "name": "a",
-        "type": "uint256[2]"
-      },
-      {
-        "internalType": "uint256[2][2]",
-        "name": "b",
-        "type": "uint256[2][2]"
-      },
-      {
-        "internalType": "uint256[2]",
-        "name": "c",
-        "type": "uint256[2]"
-      },
-      {
-        "internalType": "uint256[34]",
-        "name": "input",
-        "type": "uint256[34]"
-      }
-    ],
-    "name": "verifyProof",
+    "inputs": [],
+    "name": "verifier",
     "outputs": [
       {
-        "internalType": "bool",
-        "name": "r",
-        "type": "bool"
+        "internalType": "contract Verifier",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
