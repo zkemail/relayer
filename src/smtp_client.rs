@@ -9,6 +9,7 @@ use lettre::{
     },
     Address, Message, SmtpTransport, Transport,
 };
+use mailparse::{parse_mail, MailHeaderMap};
 
 // use mailparse::Mail;
 use anyhow::{anyhow, Result};
@@ -36,57 +37,73 @@ impl SmtpClient {
     }
 
     pub fn reply_all(&self, raw_email: &str, reply_body: &str) -> Result<()> {
-        let mut original_to = vec![];
-        let mut original_cc = vec![];
-        let mut original_from = None;
-        let mut in_reply_to = String::new();
-        let mut original_subject = String::new();
+        let pased_email = parse_mail(raw_email.as_bytes())?;
 
-        for line in raw_email.lines() {
-            if line.starts_with("To:") {
-                let parsed: Result<To, _> = To::parse(line);
-                if let Ok(header) = parsed {
-                    original_to.push(header);
-                }
-            } else if line.starts_with("Cc:") {
-                let parsed: Result<Cc, _> = Cc::parse(line);
-                if let Ok(header) = parsed {
-                    original_cc.push(header);
-                }
-            } else if line.starts_with("From:") {
-                let parsed: Result<From, _> = From::parse(line);
-                if let Ok(header) = parsed {
-                    original_from = Some(header);
-                }
-            } else if line.starts_with("Message-ID:") {
-                in_reply_to = line.trim_start_matches("Message-ID:").trim().to_string();
-            } else if line.starts_with("Subject:") {
-                original_subject = line.trim_start_matches("Subject:").trim().to_string();
-            }
-        }
+        let original_to = pased_email.headers.get_all_values("To");
+        let original_cc = pased_email.headers.get_all_values("Cc");
+        let original_from = pased_email
+            .headers
+            .get_first_value("From")
+            .ok_or(anyhow!("No from"))?;
+        let in_reply_to = pased_email
+            .headers
+            .get_first_value("Message-ID")
+            .ok_or(anyhow!("No message id"))?;
+        let original_subject = pased_email
+            .headers
+            .get_first_value("Subject")
+            .ok_or(anyhow!("No subject"))?;
+
+        // for line in raw_email.lines() {
+        //     if line.starts_with("To:") {
+        //         let parsed: Result<To, _> = To::parse(line);
+        //         if let Ok(header) = parsed {
+        //             original_to.push(header);
+        //         }
+        //     } else if line.starts_with("Cc:") {
+        //         let parsed: Result<Cc, _> = Cc::parse(line);
+        //         if let Ok(header) = parsed {
+        //             original_cc.push(header);
+        //         }
+        //     } else if line.starts_with("From:") {
+        //         let parsed: Result<From, _> = From::parse(line);
+        //         if let Ok(header) = parsed {
+        //             original_from = Some(header);
+        //         }
+        //     } else if line.starts_with("Message-ID:") {
+        //         in_reply_to = line.trim_start_matches("Message-ID:").trim().to_string();
+        //     } else if line.starts_with("Subject:") {
+        //         original_subject = line.trim_start_matches("Subject:").trim().to_string();
+        //     }
+        // }
         println!(
             "Parsed email headers: {:?} {:?} {:?} {:?} {:?}",
             original_to, original_cc, original_from, in_reply_to, original_subject
         );
         // Create the email sender's Mailbox
-        let sender = Mailbox::new(
-            Some("Relayer".to_string()),
-            self.email_id.parse::<Address>()?,
-        );
+        // let sender = Mailbox::new(
+        //     Some("Relayer".to_string()),
+        //     self.email_id.parse::<Address>()?,
+        // );
+        let sender = Mailbox::new(None, self.email_id.parse::<Address>()?);
 
         let mut email = Message::builder()
             .from(sender.clone())
             .subject(format!("Re: {}", original_subject))
             .in_reply_to(in_reply_to);
 
-        let mboxes: Mailboxes = original_from.unwrap().into();
+        let mboxes: Mailboxes = From::parse(&original_from)
+            .map_err(|e| anyhow!("from parse error: {}", e))?
+            .into();
         for mbox in mboxes {
             if mbox.email != sender.email {
                 email = email.to(mbox);
             }
         }
         for to in original_to {
-            let mboxes: Mailboxes = to.into();
+            let mboxes: Mailboxes = To::parse(&to)
+                .map_err(|e| anyhow!("to parse error: {}", e))?
+                .into();
             for mbox in mboxes {
                 if mbox.email == self.email_id.parse::<Address>()? {
                     continue;
@@ -96,7 +113,9 @@ impl SmtpClient {
         }
 
         for cc in original_cc {
-            let mboxes: Mailboxes = cc.into();
+            let mboxes: Mailboxes = Cc::parse(&cc)
+                .map_err(|e| anyhow!("cc parse error: {}", e))?
+                .into();
             for mbox in mboxes {
                 if mbox.email == self.email_id.parse::<Address>()? {
                     continue;

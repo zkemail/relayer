@@ -99,7 +99,7 @@ impl EmailProver for Halo2SimpleProver {
                 }
             }
         }
-        let params_byte = Bytes::from(abi::encode(&Token::Tuple(tokens)));
+        let params_byte = Bytes::from(abi::encode(&[Token::Tuple(tokens)]));
         let calldata = (params_byte, acc, proof);
         self.next_pop_nonce += 1;
         Ok(Some((id, email, calldata)))
