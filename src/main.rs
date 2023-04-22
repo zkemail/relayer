@@ -1,45 +1,33 @@
-mod chain;
+// mod chain;
+mod config;
 mod imap_client;
 mod prover;
 // pub mod parse_email;
+// mod parse_email;
 mod processer;
+mod smtp_client;
 use anyhow::{anyhow, Result};
-use async_trait::async_trait;
-use axum::{
-    extract::{Extension, Json, Multipart, Path},
-    http::StatusCode,
-    response::IntoResponse,
-    routing::post,
-    Router,
+use config::{
+    IMAP_AUTH_TYPE_KEY, IMAP_AUTH_URL_KEY, IMAP_CLIENT_ID_KEY, IMAP_CLIENT_SECRET_KEY,
+    IMAP_DOMAIN_NAME_KEY, IMAP_PORT_KEY, IMAP_REDIRECT_URL_KEY, IMAP_TOKEN_URL_KEY, LOGIN_ID_KEY,
+    LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY, SMTP_PORT_KEY, ZK_EMAIL_PATH_KEY,
 };
-use chain::send_to_chain;
 use dotenv::dotenv;
 use duct::cmd;
 use futures_util::stream::StreamExt;
 use imap_client::{IMAPAuth, ImapClient};
 // use parse_email::*;
+// use parse_email::*;
 use processer::EmailProcesser;
 use regex::Regex;
-use reqwest;
-use reqwest::Client;
 use serde::Deserialize;
-use serde_json::Value;
-// use sh_caller::run_commands;
-use std::fs::File;
-use std::io::Read;
+use smtp_client::EmailSenderClient;
 use std::{
     collections::hash_map::DefaultHasher,
     env,
     error::Error,
     fs,
     hash::{Hash, Hasher},
-    {convert::Infallible, net::SocketAddr},
-};
-use tracing_subscriber::{
-    fmt::{Subscriber, SubscriberBuilder},
-    layer::SubscriberExt,
-    prelude::*,
-    EnvFilter,
 };
 
 #[derive(Debug, Deserialize)]
@@ -94,57 +82,34 @@ struct EmailEvent {
 //     // println!("Response status: {}", response.status());
 // }
 
-// Helper function to send a reply to a retrieved email
-// pub fn send_reply(
-//     body: &str,
-//     reply_body: &str,
-//     gmail_account: &str,
-//     gmail_app_password: &str,
-// ) -> Result<()> {
-//     // Parse the email to extract sender, subject, and message ID
-//     let mail: ParsedMail = mailparse::parse_mail(body)?;
-//     let from = mail.headers.get_first_value("From")?;
-//     let subject = mail.headers.get_first_value("Subject")?;
-//     let message_id = mail.headers.get_first_value("Message-ID")?;
+// pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) {
+//     let mut subject = extract_subject(&raw_email).unwrap();
+//     let mut from = extract_from(&raw_email).unwrap();
+//     println!("Subject, from: {:?} {:?}", subject, from);
 
-//     // Create the email message
-//     let email = Message::builder()
-//         .from(Mailbox::new(None, gmail_account.parse()?))
-//         .to(from.parse()?)
-//         .subject(format!("Re: {}", subject))
-//         .header(header::InReplyTo(message_id.parse()?))
-//         .header(header::References(vec![message_id.parse()?]))
-//         .multipart(
-//             MultiPart::mixed().singlepart(
-//                 SinglePart::plain()
-//                     .header(header::ContentType("text/plain; charset=utf8".parse()?))
-//                     .body(reply_body.to_string()),
-//             ),
-//         )?;
-
-//     // Configure the SMTP transport with Gmail's SMTP server and app password
-//     let creds = Credentials::new(gmail_account.to_string(), gmail_app_password.to_string());
-//     let mailer = SmtpTransport::relay("smtp.gmail.com")?
-//         .credentials(creds)
-//         .build();
-
-//     // Send the email
-//     mailer.send(&email)?;
-
-//     Ok(())
+//     // Validate subject, and send rejection/reformatting email if necessary
+//     let re = Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc) to (.+@.+(\..+)+)").unwrap();
+//     let subject_regex = re.clone();
+//     let mut custom_reply: String = "".to_string();
+//     if subject_regex.is_match(subject.as_str()) {
+//         if let Some(captures) = re.captures(subject.as_str()) {
+//             // Extract the amount and recipient from the captures
+//             let amount = captures.get(1).map_or("", |m| m.as_str());
+//             let recipient = captures.get(4).map_or("", |m| m.as_str());
+//             custom_reply = format!("Valid send initiated. Sending {} eth to {} on Ethereum. We will follow up with Etherscan link when finished!", amount, recipient);
+//         } else {
+//             custom_reply = "Send seems to match regex but is invalid! Please try again with this subject: \"Send _ eth to __@__.___\"".to_string();
+//         }
+//         println!("Send valid! Validating proof...");
+//         // .await;
+//     } else {
+//         println!("Send invalid! Regex failed...");
+//         custom_reply =
+//             "Send invalid! Please try again with this subject: \"Send _ eth to __@__.___\""
+//                 .to_string();
+//     }
+//     let confirmation = emailer.reply_all(raw_email, &custom_reply);
 // }
-
-const IMAP_DOMAIN_NAME_KEY: &'static str = "IMAP_DOMAIN_NAME";
-const IMAP_PORT_KEY: &'static str = "IMAP_PORT";
-const IMAP_AUTH_TYPE_KEY: &'static str = "AUTH_TYPE";
-const IMAP_LOGIN_ID_KEY: &'static str = "IMAP_LOGIN_ID";
-const IMAP_LOGIN_PASSWORD_KEY: &'static str = "IMAP_LOGIN_PASSWORD";
-const IMAP_CLIENT_ID_KEY: &'static str = "IMAP_CLIENT_ID";
-const IMAP_CLIENT_SECRET_KEY: &'static str = "IMAP_CLIENT_SECRET";
-const IMAP_AUTH_URL_KEY: &'static str = "IMAP_AUTH_URL";
-const IMAP_TOKEN_URL_KEY: &'static str = "IMAP_TOKEN_URL";
-const IMAP_REDIRECT_URL_KEY: &'static str = "IMAP_REDIRECT_URL";
-const ZK_EMAIL_PATH_KEY: &'static str = "ZK_EMAIL_CIRCOM_PATH";
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -156,12 +121,12 @@ async fn main() -> Result<()> {
     let auth_type = env::var(IMAP_AUTH_TYPE_KEY)?;
     let imap_auth = if &auth_type == "password" {
         IMAPAuth::Password {
-            id: env::var(IMAP_LOGIN_ID_KEY)?,
-            password: env::var(IMAP_LOGIN_PASSWORD_KEY)?,
+            id: env::var(LOGIN_ID_KEY)?,
+            password: env::var(LOGIN_PASSWORD_KEY)?,
         }
     } else if &auth_type == "oauth" {
         IMAPAuth::OAuth {
-            user_id: env::var(IMAP_LOGIN_ID_KEY)?,
+            user_id: env::var(LOGIN_ID_KEY)?,
             client_id: env::var(IMAP_CLIENT_ID_KEY)?,
             client_secret: env::var(IMAP_CLIENT_SECRET_KEY)?,
             auth_url: env::var(IMAP_AUTH_URL_KEY)?,

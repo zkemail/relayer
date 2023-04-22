@@ -12,6 +12,7 @@ use std::io;
 use std::net::TcpStream;
 use std::slice::Iter;
 
+// We cache the domain name, port, and auth for reconnection on failure
 #[derive(Debug)]
 pub struct ImapClient {
     imap_session: Session<TlsStream<TcpStream>>,

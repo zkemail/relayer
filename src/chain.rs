@@ -2,13 +2,22 @@ use ethers_core::types::{Address, U256};
 // use ethers_core::utils::CompiledContract;
 // use ethers_providers::{Http, Middleware, Provider};
 // use ethers_signers::{LocalWallet, Signer};
+mod config;
+mod imap_client;
+mod parse_email;
+mod processer;
+mod smtp_client;
+
 use dotenv::dotenv;
 use ethers::abi::Abi;
+use ethers::contract::ContractError;
 use ethers::core::types::TransactionRequest;
 use ethers::prelude::*;
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
 // use hex;
+use crate::config::{LOGIN_ID_KEY, LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY};
+use crate::smtp_client::EmailSenderClient;
 use hex_literal::hex;
 use k256::ecdsa::SigningKey;
 use rand::thread_rng;
@@ -18,6 +27,7 @@ use std::env;
 use std::error::Error;
 use std::fs;
 use std::str::{self, FromStr};
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 struct CircomCalldata {
@@ -29,35 +39,59 @@ struct CircomCalldata {
 
 // Call like: cargo run --bin chain -- <proof_outputs_dir> <nonce>
 // Define a new function that takes optional arguments and provides default values
+// Running with test=true overrides the RPC URL to default to localhost no matter what
+// TODO: replace test=true with rpc url instead
+async fn run(test: bool, dir: &str, nonce: &str) -> Result<(), Box<dyn Error>> {
+    // Call the main function with the specified or default values
+    let calldata = get_calldata(Some(dir), Some(nonce)).unwrap();
+    println!("Calldata: {:?}", calldata);
+
+    // Call the main function with the specified or default values
+    match send_to_chain(test, dir, nonce).await {
+        Ok(_) => {
+            println!("Successfully sent to chain.");
+        }
+        Err(err) => {
+            eprintln!("Error sending to chain: {}", err);
+        }
+    };
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
 
     // Provide default values if arguments are not specified
     let dir = args.get(1).map_or("", String::as_str);
-    let nonce = args.get(2).map_or("17689783363368087877", String::as_str);
+    let nonce = args.get(2).map_or("", String::as_str);
 
-    // Call the main function with the specified or default values
-    let calldata = get_calldata(Some(dir), Some(nonce)).unwrap();
-    println!("Calldata: {:?}", calldata);
+    // Call the run function with the specified or default values
+    run(false, dir, nonce).await
+}
 
-    // Call the main function with the specified or default values
-    match send_to_chain(true, dir, nonce).await {
-        Ok(_) => {
-            println!("Successfully sent to chain.");
-        }
-        Err(err) => {
-            eprintln!("Error to send to chain at {}: {}", line!(), err);
-        }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_run_with_defaults() {
+        let dir = "";
+        let nonce = "17689783363368087877";
+
+        println!("Make sure anvil is running on localhost:8548.");
+
+        // Call the run function with default values in the test
+        let result = run(true, dir, nonce).await;
+        assert!(result.is_ok());
     }
-    Ok(())
 }
 
 // Define a new function that takes optional arguments and provides default values
 fn get_calldata(dir: Option<&str>, nonce: Option<&str>) -> Result<CircomCalldata, Box<dyn Error>> {
     // Provide default values if arguments are not specified
     let dir = dir.unwrap_or("");
-    let nonce = nonce.unwrap_or("17689783363368087877");
+    let nonce = nonce.unwrap_or("");
 
     // Call the main function with the specified or default values
     parse_files_into_calldata(dir, nonce)
@@ -141,17 +175,11 @@ pub async fn send_to_chain(
     let rpcurl = if test {
         "http://localhost:8548".to_string()
     } else {
-        format!("https://eth-goerli.alchemyapi.io/v2/{}", alchemy_api_key)
+        std::env::var("RPC_URL").expect("The RPC_URL environment variable must be set")
     };
 
     let provider = Provider::<Http>::try_from(rpcurl)?;
-    let wallet = if test {
-        // Wallet from randomness
-        let mut rng = thread_rng();
-        LocalWallet::new(&mut rng)
-    } else {
-        LocalWallet::from_str(&private_key_hex)?
-    };
+    let wallet = LocalWallet::from_str(&private_key_hex)?;
 
     println!("Wallet address: {}", wallet.address());
 
@@ -167,23 +195,57 @@ pub async fn send_to_chain(
     // Convert the JSON value to the Abi type
     let abi: Abi = serde_json::from_value(abi_json)?;
 
-    let contract = Contract::new(contract_address, abi, provider.into());
+    println!("Provider: {:?}", provider);
+    // TODO: Hardcoded chain id
+    let chain_id: u64 = 5;
+    let gas_price = provider.get_gas_price().await?;
+    let signer = SignerMiddleware::new(provider, wallet.with_chain_id(chain_id));
+    let contract = ContractInstance::new(contract_address, abi, signer);
 
-    println!("Sending transaction...");
+    println!("Sending transaction with gas price {:?}...", gas_price);
 
     // Call the transfer function
-    let call = contract.method::<_, ()>(
-        "transfer",
-        (
-            calldata.pi_a,
-            calldata.pi_b,
-            calldata.pi_c,
-            calldata.signals,
-        ),
-    )?;
-    println!("Calling contract fn: {:?}", call);
-    let pending_tx = call.send().await?;
-    println!("Transaction hash: {:?}", pending_tx);
+    let call = contract
+        .method::<_, ()>(
+            "transfer",
+            (
+                calldata.pi_a,
+                calldata.pi_b,
+                calldata.pi_c,
+                calldata.signals,
+            ),
+        )?
+        .gas_price(gas_price); // Set an appropriate gas limit
 
+    println!("Calling call: {:?}", call);
+
+    let pending_tx = match call.send().await {
+        Ok(tx) => tx,
+        Err(e) => {
+            println!("Error: {:?}", e);
+            return Err(e.into());
+        }
+    };
+    println!("Transaction hash: {:?}", pending_tx);
+    reply_with_etherscan(nonce, pending_tx.tx_hash());
     Ok(())
+}
+
+fn reply_with_etherscan(nonce: &str, tx_hash: H256) {
+    let etherscan_url = format!("https://goerli.etherscan.io/tx/0x{:x}", tx_hash);
+    let reply = format!(
+        "Transaction sent! View Etherscan confirmation: {}.",
+        etherscan_url
+    );
+    println!("Replying with confirmation...{}", reply);
+
+    dotenv().ok();
+    let mut sender: EmailSenderClient = EmailSenderClient::new(
+        env::var(LOGIN_ID_KEY).unwrap().as_str(),
+        env::var(LOGIN_PASSWORD_KEY).unwrap().as_str(),
+        Some(env::var(SMTP_DOMAIN_NAME_KEY).unwrap().as_str()),
+    );
+    // Read raw email from received_eml/wallet_{nonce}.eml
+    let raw_email = fs::read_to_string(format!("./received_eml/wallet_{}.eml", nonce)).unwrap();
+    let confirmation = sender.reply_all(&raw_email, &reply);
 }
