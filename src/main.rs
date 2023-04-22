@@ -69,7 +69,7 @@ pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) {
     println!("Subject, from: {:?} {:?}", subject, from);
 
     // Validate subject, and send rejection/reformatting email if necessary
-    let re = Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc) to (.+@.+(\..+)+)").unwrap();
+    let re = Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc|dai) to (.+@.+(\..+)+)").unwrap();
     let subject_regex = re.clone();
     let mut custom_reply: String = "".to_string();
     if subject_regex.is_match(subject.as_str()) {
