@@ -33,7 +33,7 @@ impl EmailProver for Halo2SimpleProver {
     type ProofCalldata = (Bytes, Bytes, Bytes);
     async fn prove_emails(&mut self) -> Result<()> {
         while self.next_prove_nonce < self.num_email {
-            self.prove_email(self.next_prove_nonce).await?;
+            // self.prove_email(self.next_prove_nonce).await?;
             self.next_prove_nonce += 1;
         }
         Ok(())
@@ -99,7 +99,7 @@ impl EmailProver for Halo2SimpleProver {
                 }
             }
         }
-        let params_byte = Bytes::from(abi::encode(&tokens));
+        let params_byte = Bytes::from(abi::encode(&Token::Tuple(tokens)));
         let calldata = (params_byte, acc, proof);
         self.next_pop_nonce += 1;
         Ok(Some((id, email, calldata)))
