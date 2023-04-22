@@ -11,23 +11,20 @@ use lettre::{
 };
 
 // use mailparse::Mail;
-use crate::config::{SMTP_DOMAIN_NAME_KEY, SMTP_PORT_KEY};
+use anyhow::{anyhow, Result};
 use native_tls::{Protocol, TlsConnector};
-use std::error::Error;
 
 #[derive(Clone)]
-pub struct EmailSenderClient {
+pub struct SmtpClient {
     email_id: String,
     transport: SmtpTransport,
 }
 
-impl EmailSenderClient {
-    pub fn new(email_id: &str, email_app_password: &str, domain_name: Option<&str>) -> Self {
-        let smtp_address = domain_name.unwrap_or("smtp.gmail.com");
-
+impl SmtpClient {
+    pub fn construct(email_id: &str, email_app_password: &str, domain_name: &str) -> Self {
+        let smtp_address = domain_name;
         let creds = Credentials::new(email_id.to_owned(), email_app_password.to_owned());
-
-        let mut client = SmtpTransport::relay(smtp_address)
+        let client = SmtpTransport::relay(smtp_address)
             .unwrap()
             .credentials(creds)
             .build();
@@ -38,7 +35,7 @@ impl EmailSenderClient {
         }
     }
 
-    pub fn reply_all(&self, raw_email: &str, reply_body: &str) -> Result<(), Box<dyn Error>> {
+    pub fn reply_all(&self, raw_email: &str, reply_body: &str) -> Result<()> {
         let mut original_to = vec![];
         let mut original_cc = vec![];
         let mut original_from = None;
@@ -91,7 +88,7 @@ impl EmailSenderClient {
         for to in original_to {
             let mboxes: Mailboxes = to.into();
             for mbox in mboxes {
-                if (mbox.email == self.email_id.parse::<Address>()?) {
+                if mbox.email == self.email_id.parse::<Address>()? {
                     continue;
                 }
                 email = email.to(mbox);
@@ -101,7 +98,7 @@ impl EmailSenderClient {
         for cc in original_cc {
             let mboxes: Mailboxes = cc.into();
             for mbox in mboxes {
-                if (mbox.email == self.email_id.parse::<Address>()?) {
+                if mbox.email == self.email_id.parse::<Address>()? {
                     continue;
                 }
                 email = email.cc(mbox);
@@ -111,8 +108,7 @@ impl EmailSenderClient {
         let message = match email.body(reply_body.as_bytes().to_vec()) {
             Ok(m) => m,
             Err(e) => {
-                println!("Error building email: {:?}", e);
-                return Err(Box::new(e));
+                return Err(anyhow!("Error building email: {:?}", e));
             }
         };
 

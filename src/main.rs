@@ -1,4 +1,5 @@
 // mod chain;
+mod chain_client;
 mod config;
 mod imap_client;
 mod prover;
@@ -7,36 +8,24 @@ mod prover;
 mod processer;
 mod smtp_client;
 use anyhow::{anyhow, Result};
-use config::{
-    IMAP_AUTH_TYPE_KEY, IMAP_AUTH_URL_KEY, IMAP_CLIENT_ID_KEY, IMAP_CLIENT_SECRET_KEY,
-    IMAP_DOMAIN_NAME_KEY, IMAP_PORT_KEY, IMAP_REDIRECT_URL_KEY, IMAP_TOKEN_URL_KEY, LOGIN_ID_KEY,
-    LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY, SMTP_PORT_KEY, ZK_EMAIL_PATH_KEY,
-};
+use chain_client::Halo2Client;
+use config::*;
 use dotenv::dotenv;
-use duct::cmd;
-use futures_util::stream::StreamExt;
 use imap_client::{IMAPAuth, ImapClient};
 // use parse_email::*;
 // use parse_email::*;
 use processer::EmailProcesser;
-use regex::Regex;
-use serde::Deserialize;
-use smtp_client::EmailSenderClient;
-use std::{
-    collections::hash_map::DefaultHasher,
-    env,
-    error::Error,
-    fs,
-    hash::{Hash, Hasher},
-};
+use prover::Halo2SimpleProver;
+use smtp_client::SmtpClient;
+use std::env;
 
-#[derive(Debug, Deserialize)]
-struct EmailEvent {
-    dkim: Option<String>,
-    subject: Option<String>,
-    from: Option<String>,
-    to: Option<String>,
-}
+// #[derive(Debug, Deserialize)]
+// struct EmailEvent {
+//     dkim: Option<String>,
+//     subject: Option<String>,
+//     from: Option<String>,
+//     to: Option<String>,
+// }
 
 // async fn handle_email(raw_email: String, zk_email_circom_dir: &String) {
 //     let hash = {
@@ -116,7 +105,7 @@ async fn main() -> Result<()> {
     dotenv().ok();
 
     let domain_name = env::var(IMAP_DOMAIN_NAME_KEY)?;
-    let zk_email_circom_path = env::var(ZK_EMAIL_PATH_KEY)?;
+    // let zk_email_circom_path = env::var(ZK_EMAIL_PATH_KEY)?;
     let port = env::var(IMAP_PORT_KEY)?.parse()?;
     let auth_type = env::var(IMAP_AUTH_TYPE_KEY)?;
     let imap_auth = if &auth_type == "password" {
@@ -137,13 +126,37 @@ async fn main() -> Result<()> {
         panic!("Not supported auth type.");
     };
 
-    let receiver = ImapClient::construct(&domain_name, port, imap_auth).await?;
-    let mut processer = EmailProcesser::new(receiver);
+    let imap_client = ImapClient::construct(&domain_name, port, imap_auth).await?;
+    let smtp_client = SmtpClient::construct(
+        env::var(LOGIN_ID_KEY)?.as_str(),
+        env::var(LOGIN_PASSWORD_KEY)?.as_str(),
+        env::var(SMTP_DOMAIN_NAME_KEY)?.as_str(),
+    );
+    let prover = match env::var(PROVER_TYPE_KEY)?.as_str() {
+        "halo2-simple" => Halo2SimpleProver::construct(
+            env::var(EMAIL_DIR_KEY)?.as_str(),
+            env::var(PARAM_PATH_KEY)?.as_str(),
+            env::var(MANIPULATION_DEFS_PATH_KEY)?.as_str(),
+        )?,
+        _ => panic!("Not supported prover type"),
+    };
+    let chain_client = match env::var(CHAIN_CLIENT_TYPE_KEY)?.as_str() {
+        "halo2-client" => Halo2Client::construct(
+            env::var(PRIVATE_KEY_HEX_KEY)?.as_str(),
+            env::var(RPC_URL_KEY)?.as_str(),
+            env::var(CONTRACT_ADDRESS_KEY)?.as_str(),
+            env::var(ABI_PATH_KEY)?.as_str(),
+            env::var(CHAIN_ID_KEY)?.as_str().parse::<u64>()?,
+        )?,
+        _ => panic!("Not supported chain client type"),
+    };
+
+    let mut processer = EmailProcesser::new(imap_client, smtp_client, prover, chain_client);
     loop {
         println!("waiting new emails...");
         processer.wait_new_email()?;
         println!("new emails are found!");
-        processer.fetch_new_emails()?;
+        processer.fetch_new_emails().await?;
         println!("emails are processed.");
         // tokio::time::sleep(tokio::time::Duration::from_millis(5000)).await;
     }

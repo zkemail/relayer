@@ -74,7 +74,7 @@ impl ImapClient {
                 )
                 .set_redirect_uri(RedirectUrl::new(redirect_url)?);
                 let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
-                let (auth_url, csrf_token) = oauth_client
+                let (auth_url, _) = oauth_client
                     .authorize_url(CsrfToken::new_random)
                     // Set the desired scopes.
                     .add_scope(Scope::new("https://mail.google.com/".to_string()))

@@ -1,35 +1,41 @@
-use crate::imap_client::ImapClient;
 use crate::prover::EmailProver;
+use crate::smtp_client::SmtpClient;
+use crate::{chain_client::ChainClient, imap_client::ImapClient};
 use anyhow::{anyhow, Result};
 use cfdkim::{canonicalize_signed_email, SignerBuilder};
 use fancy_regex::Regex;
 use imap::types::Fetch;
 
-#[derive(Debug)]
-pub struct EmailProcesser {
+pub struct EmailProcesser<P: EmailProver, C: ChainClient<P>> {
     imap_client: ImapClient,
-    // prover: P,
-    // num_unprocessed_email: usize,
+    smtp_client: SmtpClient,
+    prover: P,
+    chain_client: C,
 }
 
-impl EmailProcesser {
-    const SUBJECT_REGEX: &'static str = r"(?<=Email Wallet Manipulation ID )([0-9]|\.)+";
-    pub fn new(imap_client: ImapClient) -> Self {
+impl<P: EmailProver, C: ChainClient<P>> EmailProcesser<P, C> {
+    const SUBJECT_REGEX: &'static str = r"(?<=Email Wallet Manipulation ID )[0-9]+";
+    pub fn new(
+        imap_client: ImapClient,
+        smtp_client: SmtpClient,
+        prover: P,
+        chain_client: C,
+    ) -> Self {
         Self {
             imap_client,
-            // prover,
-            // num_unprocessed_email,
+            smtp_client,
+            prover,
+            chain_client, // num_unprocessed_email,
         }
     }
 
-    pub fn fetch_new_emails(&mut self) -> Result<()> {
+    pub async fn fetch_new_emails(&mut self) -> Result<()> {
         let fetches = self.imap_client.retrieve_new_emails()?;
         // println!("The number of fetched emails: {}", fetches.len());
         for fetched in fetches.into_iter() {
             for fetch in fetched.into_iter() {
-                match self.fetch_one_email(fetch) {
+                match self.fetch_one_email(fetch).await {
                     Ok(_) => {
-                        // self.num_unprocessed_email += 1;
                         continue;
                     }
                     Err(e) => {
@@ -38,6 +44,17 @@ impl EmailProcesser {
                     }
                 }
             }
+        }
+        self.prover.prove_emails().await?;
+        while let Some((id, raw_email, calldata)) = self.prover.pop_calldata().await? {
+            let tx_hash = self.chain_client.send_chain(id, calldata).await?;
+            let etherscan_url = format!("https://goerli.etherscan.io/tx/0x{:x}", tx_hash);
+            let reply = format!(
+                "Transaction sent! View Etherscan confirmation: {}.",
+                etherscan_url
+            );
+            println!("Replying with confirmation...{}", reply);
+            self.smtp_client.reply_all(&raw_email, &reply)?;
         }
         // let num_proofs_per_aggregation = self.prover.num_proofs_per_aggregation();
         // let mut num_agg_proof = 0;
@@ -52,7 +69,7 @@ impl EmailProcesser {
         Ok(())
     }
 
-    fn fetch_one_email(&mut self, fetch: &Fetch) -> Result<()> {
+    async fn fetch_one_email(&mut self, fetch: &Fetch) -> Result<()> {
         let envelope = fetch.envelope().ok_or(anyhow!("No envelope"))?;
         let subject = envelope.subject.ok_or(anyhow!("No subject"))?;
         println!("subject {:?}", subject);
@@ -103,7 +120,7 @@ impl EmailProcesser {
         };
         println!("to adress {}", to_addr);
         let email_bytes = fetch.body().ok_or(anyhow!("No body"))?;
-        // self.prover.push_email(email_bytes)?;
+        self.prover.push_email(manipulation_id, email_bytes).await?;
         Ok(())
     }
 
