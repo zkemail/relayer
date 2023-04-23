@@ -18,7 +18,8 @@ pub const LOGIN_PASSWORD_KEY: &'static str = "LOGIN_PASSWORD";
 
 pub const PROVER_TYPE_KEY: &'static str = "PROVER_TYPE";
 pub const EMAIL_DIR_KEY: &'static str = "EMAIL_DIR";
-pub const PARAM_PATH_KEY: &'static str = "PARAM_PATH";
+pub const APP_PARAM_PATH_KEY: &'static str = "APP_PARAM_PATH";
+pub const AGG_PARAM_PATH_KEY: &'static str = "AGG_PARAM_PATH";
 pub const MANIPULATION_DEFS_PATH_KEY: &'static str = "MANIPULATION_DEFS_PATH";
 
 pub const CHAIN_CLIENT_TYPE_KEY: &'static str = "CHAIN_CLIENT_TYPE";

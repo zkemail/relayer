@@ -135,7 +135,8 @@ async fn main() -> Result<()> {
     let prover = match env::var(PROVER_TYPE_KEY)?.as_str() {
         "halo2-simple" => Halo2SimpleProver::construct(
             env::var(EMAIL_DIR_KEY)?.as_str(),
-            env::var(PARAM_PATH_KEY)?.as_str(),
+            env::var(APP_PARAM_PATH_KEY)?.as_str(),
+            env::var(AGG_PARAM_PATH_KEY)?.as_str(),
             env::var(MANIPULATION_DEFS_PATH_KEY)?.as_str(),
         )?,
         _ => panic!("Not supported prover type"),

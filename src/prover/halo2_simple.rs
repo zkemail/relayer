@@ -21,7 +21,8 @@ use std::{
 #[derive(Debug, Clone)]
 pub struct Halo2SimpleProver {
     email_dir: String,
-    param_path: String,
+    app_params_path: String,
+    agg_params_path: String,
     manipulation_defs: ManipulationDefsJson,
     num_email: usize,
     next_prove_nonce: usize,
@@ -69,7 +70,7 @@ impl EmailProver for Halo2SimpleProver {
             Token::FixedBytes(FixedBytes::from(hex::decode(
                 &public_input.headerhash[2..],
             )?)),
-            Token::Bytes(hex::decode(&public_input.public_key_n_bytes)?),
+            Token::Bytes(hex::decode(&public_input.public_key_n_bytes[2..])?),
             Token::Uint(U256::from(public_input.header_starts[0])),
             Token::String(public_input.header_substrs[0].to_string()),
             Token::Uint(U256::from(public_input.header_starts[1])),
@@ -114,7 +115,8 @@ impl EmailProver for Halo2SimpleProver {
 impl Halo2SimpleProver {
     pub fn construct(
         email_dir: &str,
-        param_path: &str,
+        app_params_path: &str,
+        agg_params_path: &str,
         manipulation_defs_path: &str,
     ) -> Result<Self> {
         let manipulation_defs = serde_json::from_reader::<File, ManipulationDefsJson>(File::open(
@@ -122,7 +124,8 @@ impl Halo2SimpleProver {
         )?)?;
         Ok(Self {
             email_dir: email_dir.to_string(),
-            param_path: param_path.to_string(),
+            app_params_path: app_params_path.to_string(),
+            agg_params_path: agg_params_path.to_string(),
             manipulation_defs,
             num_email: 0,
             next_prove_nonce: 0,
@@ -140,7 +143,8 @@ impl Halo2SimpleProver {
         let app_pk_path = def.app_pk_path.as_str();
         let agg_pk_path = def.agg_pk_path.as_str();
         evm_prove_agg(
-            &self.param_path,
+            &self.app_params_path,
+            &self.agg_params_path,
             app_circuit_config_path,
             agg_circuit_config_path,
             &email_path,
