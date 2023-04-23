@@ -101,7 +101,18 @@ impl EmailProver for Halo2SimpleProver {
                         .find(public_input.body_substrs[idx].as_str())?
                         .ok_or(anyhow!("the int part is not found in {}-th body.", idx))?;
                     tokens.push(Token::Uint(U256::from_str_radix(int_found.as_str(), 10)?));
-                    tokens.push(Token::Uint(U256::from_str_radix(dec_found.as_str(), 10)?));
+                    let dec_part_str = dec_found.as_str();
+                    let mut num_dec_zero = 0u64;
+                    for byte in dec_part_str.as_bytes().into_iter() {
+                        if *byte != b'0' {
+                            break;
+                        } else {
+                            num_dec_zero += 1;
+                        }
+                    }
+                    println!("num_dec_zero {}", num_dec_zero);
+                    tokens.push(Token::Uint(U256::from(num_dec_zero)));
+                    tokens.push(Token::Uint(U256::from_str_radix(dec_part_str, 10)?));
                 }
             }
         }
