@@ -8,22 +8,21 @@ import os
 from dotenv import load_dotenv
 
 # --------- MODAL CLOUD COORDINATOR ------------
-def filter_condition(file: str):
-    return ".git/" not in file and "target/" not in file
+# def filter_condition(file: str):
+#     return ".git/" not in file and "target/" not in file
 
-image = modal.Image.from_dockerfile(
-    "./relayer/Dockerfile",
-    context_mount=modal.Mount()
-    .add_local_dir("./relayer", remote_path="/root/relayer", condition=filter_condition)
-    .add_local_dir("./zk-email-verify/build", remote_path="/root/zk-email-verify/build")
-    .add_local_dir("./rapidsnark/build", remote_path="/root/rapidsnark/build")
+# image = modal.Image.from_dockerfile(
+#     "/home/ubuntu/Dockerfile",
+#     context_mount=modal.Mount()
+#     # .add_local_dir("./relayer", remote_path="/root/relayer", condition=filter_condition)
+#     # .add_local_dir("./zk-email-verify/build", remote_path="/root/zk-email-verify/build")
+#     # .add_local_dir("./rapidsnark/build", remote_path="/root/rapidsnark/build")
+# )
+image = modal.Image.from_dockerhub(
+  "aayushg0/zkemail-image:modal",
+#   setup_dockerfile_commands=[]
 )
 stub = modal.Stub(image=image)
-
-# https://github.com/zkemail/zk-email-verify
-# can cp the local ../relayer
-# but then need to cargo build
-# ../rapidsnark/build
 
 @stub.function()
 def test(file_contents: str):

@@ -26,6 +26,7 @@ echo -e "net.ipv4.tcp_keepalive_time = 45\nnet.ipv4.tcp_keepalive_intvl = 45\nne
 sudo sysctl -p
 ```
 
+
 ## Directory Setup
 
 ```
@@ -69,8 +70,26 @@ To test the proofgen when the relayer is running, send `relayer@sendeth.org` an 
 Then run the prover + infrastructure coordinator.
 
 ```
-pip3 install --r requirements.txt
+pip3 install -r requirements.txt
 python3 coordinator.py
+```
+
+## Update the docker file
+
+If you ever want to edit the Dockerfile, do
+```
+cp Dockerfile ..
+cd ..
+sudo docker build -t zkemail-image .
+sudo docker login
+sudo docker tag zkemail-image aayushg0/zkemail-image:modal
+sudo docker push aayushg0/zkemail-image:modal
+```
+
+And edit the tag in coordinator.py. To re-deploy the modal instance, do
+```
+modal token set --token-id <tokenid> --token-secret <tokensecret>
+modal deploy --name aayush coordinator.py
 ```
 
 ## Server Setup
