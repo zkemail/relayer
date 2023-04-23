@@ -3,6 +3,7 @@ use crate::config::RegexType;
 use crate::prover::EmailProver;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use ethers::abi::FixedBytes;
 use ethers::abi::Token;
 use ethers::abi::{ParamType, SolStruct};
 use ethers::prelude::*;
@@ -33,7 +34,7 @@ impl EmailProver for Halo2SimpleProver {
     type ProofCalldata = (Bytes, Bytes, Bytes);
     async fn prove_emails(&mut self) -> Result<()> {
         while self.next_prove_nonce < self.num_email {
-            // self.prove_email(self.next_prove_nonce).await?;
+            self.prove_email(self.next_prove_nonce).await?;
             self.next_prove_nonce += 1;
         }
         Ok(())
@@ -65,6 +66,10 @@ impl EmailProver for Halo2SimpleProver {
         .unwrap();
         let id = self.id_of_nonce[&nonce];
         let mut tokens = vec![
+            Token::FixedBytes(FixedBytes::from(hex::decode(
+                &public_input.headerhash[2..],
+            )?)),
+            Token::Bytes(hex::decode(&public_input.public_key_n_bytes)?),
             Token::Uint(U256::from(public_input.header_starts[0])),
             Token::String(public_input.header_substrs[0].to_string()),
             Token::Uint(U256::from(public_input.header_starts[1])),
@@ -112,11 +117,6 @@ impl Halo2SimpleProver {
         param_path: &str,
         manipulation_defs_path: &str,
     ) -> Result<Self> {
-        // let mut defs_of_id = HashMap::<usize, RegexDefs>::new();
-        // for (id, path) in defs_path_of_id.iter() {
-        //     let defs = serde_json::from_reader::<File, RegexDefs>(File::open(path.as_str())?)?;
-        //     defs_of_id.insert(*id, defs);
-        // }
         let manipulation_defs = serde_json::from_reader::<File, ManipulationDefsJson>(File::open(
             manipulation_defs_path,
         )?)?;
@@ -135,12 +135,14 @@ impl Halo2SimpleProver {
         let (email_path, acc_path, proof_path, public_input_path) = self.nonce2pathes(nonce);
         let id = self.id_of_nonce[&nonce];
         let def = &self.manipulation_defs.rules[&id];
-        let circuit_config_path = def.config_path.as_str();
+        let app_circuit_config_path = def.app_config_path.as_str();
+        let agg_circuit_config_path = def.agg_config_path.as_str();
         let app_pk_path = def.app_pk_path.as_str();
         let agg_pk_path = def.agg_pk_path.as_str();
         evm_prove_agg(
             &self.param_path,
-            circuit_config_path,
+            app_circuit_config_path,
+            agg_circuit_config_path,
             &email_path,
             app_pk_path,
             agg_pk_path,
