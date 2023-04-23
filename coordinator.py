@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 #     # .add_local_dir("./rapidsnark/build", remote_path="/root/rapidsnark/build")
 # )
 image = modal.Image.from_dockerhub(
-  "aayushg0/zkemail-image:modal",
+  "aayushg0/zkemail-modal:modal",
 #   setup_dockerfile_commands=[]
 )
 stub = modal.Stub(image=image)
