@@ -2928,7 +2928,7 @@ dependencies = [
 [[package]]
 name = "halo2-zk-email"
 version = "0.1.0"
-source = "git+https://github.com/zkemail/halo2-zk-email.git?branch=feat/reuse_axiom#6d16c79f98d636bb56201f78e756678d1bdbf8f1"
+source = "git+https://github.com/zkemail/halo2-zk-email.git?branch=feat/reuse_axiom#1aed1b79915aae82aa6184066c4b9dbdce6091f1"
 dependencies = [
  "ark-std",
  "base64 0.21.0",

@@ -1,9 +1,26 @@
 {
     "rules": {
         "1": {
-            "app_config_path": "./configs/app_circuit.config",
+            "app_config_path": "./configs/app_circuit_id1.config",
             "agg_config_path": "./configs/agg_circuit.config",
-            "app_pk_path": "./configs/app.pk",
+            "app_pk_path": "./configs/app_1.pk",
+            "agg_pk_path": "./configs/agg.pk",
+            "types": [
+                {
+                    "type": "Decimal"
+                },
+                {
+                    "type": "String"
+                },
+                {
+                    "type": "String"
+                }
+            ]
+        },
+        "2": {
+            "app_config_path": "./configs/app_circuit_id2.config",
+            "agg_config_path": "./configs/agg_circuit.config",
+            "app_pk_path": "./configs/app_2.pk",
             "agg_pk_path": "./configs/agg.pk",
             "types": [
                 {
