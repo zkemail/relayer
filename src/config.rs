@@ -26,7 +26,8 @@ pub const CHAIN_CLIENT_TYPE_KEY: &'static str = "CHAIN_CLIENT_TYPE";
 pub const PRIVATE_KEY_HEX_KEY: &'static str = "PRIVATE_KEY_HEX";
 pub const RPC_URL_KEY: &'static str = "RPC_URL";
 pub const CONTRACT_ADDRESS_KEY: &'static str = "CONTRACT_ADDRESS";
-pub const ABI_PATH_KEY: &'static str = "ABI_PATH";
+pub const WALLET_ABI_PATH_KEY: &'static str = "WALLET_ABI_PATH";
+pub const ERC20_ABI_PATH_KEY: &'static str = "ERC20_ABI_PATH";
 pub const CHAIN_ID_KEY: &'static str = "CHAIN_ID";
 
 use std::collections::HashMap;

@@ -11,5 +11,5 @@ use std::path::Path;
 #[async_trait]
 pub trait ChainClient<P: EmailProver> {
     async fn send_chain(&self, manipulation_id: usize, calldata: P::ProofCalldata) -> Result<H256>; // return transaction hash
-    async fn query_balance(&self, email_address: &str, token_name: &str) -> Result<U256>;
+    async fn query_balance(&self, email_address: &str, token_name: &str) -> Result<String>;
 }
