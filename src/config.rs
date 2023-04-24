@@ -47,6 +47,7 @@ pub struct ManipulationDef {
     pub(crate) agg_config_path: String,
     pub(crate) app_pk_path: String,
     pub(crate) agg_pk_path: String,
+    pub(crate) max_size: usize,
     pub(crate) types: Vec<RegexType>,
 }
 

@@ -1,3 +1,4 @@
+use crate::config::ManipulationDef;
 use crate::prover::EmailProver;
 use crate::smtp_client::SmtpClient;
 use crate::{chain_client::ChainClient, imap_client::ImapClient};
@@ -14,7 +15,8 @@ pub struct EmailProcesser<P: EmailProver, C: ChainClient<P>> {
 }
 
 impl<P: EmailProver, C: ChainClient<P>> EmailProcesser<P, C> {
-    const SUBJECT_REGEX: &'static str = r"(?<=Email Wallet Manipulation ID )[0-9]+";
+    const MANIPULATION_SUBJECT_REGEX: &'static str = r"(?<=Email Wallet Manipulation ID )[0-9]+";
+    const QUERY_SUBJECT_REGEX: &'static str = r"(?<=Email Wallet Query My Balance of )[A-Z]+";
     pub fn new(
         imap_client: ImapClient,
         smtp_client: SmtpClient,
@@ -70,21 +72,8 @@ impl<P: EmailProver, C: ChainClient<P>> EmailProcesser<P, C> {
     }
 
     async fn fetch_one_email(&mut self, fetch: &Fetch) -> Result<()> {
+        let email_bytes = fetch.body().ok_or(anyhow!("No body"))?;
         let envelope = fetch.envelope().ok_or(anyhow!("No envelope"))?;
-        let subject = envelope.subject.ok_or(anyhow!("No subject"))?;
-        println!("subject {:?}", subject);
-        let subject_str = {
-            let tag = envelope.subject.ok_or(anyhow!("No subject"))?;
-            String::from_utf8(tag.to_vec())?
-        };
-        println!("subject_str {}", subject_str);
-        let subject_regex = Regex::new(Self::SUBJECT_REGEX)?;
-        let manipulation_id = subject_regex
-            .find(&subject_str)?
-            .ok_or(anyhow!("No manipulation id"))?
-            .as_str()
-            .parse::<usize>()?;
-        println!("manipulation_id {}", manipulation_id);
         let from_addr = {
             let tag = envelope.from.as_ref();
             println!("from {:?}", tag.ok_or(anyhow!("No from"))?[0]);
@@ -119,8 +108,47 @@ impl<P: EmailProver, C: ChainClient<P>> EmailProcesser<P, C> {
             address
         };
         println!("to adress {}", to_addr);
-        let email_bytes = fetch.body().ok_or(anyhow!("No body"))?;
-        self.prover.push_email(manipulation_id, email_bytes).await?;
+
+        let subject = envelope.subject.ok_or(anyhow!("No subject"))?;
+        println!("subject {:?}", subject);
+        let subject_str = {
+            let tag = envelope.subject.ok_or(anyhow!("No subject"))?;
+            String::from_utf8(tag.to_vec())?
+        };
+        println!("subject_str {}", subject_str);
+        if let Some(subject_match) =
+            Regex::new(Self::MANIPULATION_SUBJECT_REGEX)?.find(&subject_str)?
+        {
+            let manipulation_id = subject_match.as_str().parse::<usize>()?;
+            println!("manipulation_id {}", manipulation_id);
+            let defs = self.prover.manipulation_defs();
+            let max_size = defs.rules[&manipulation_id].max_size;
+            if email_bytes.len() > max_size {
+                return Err(anyhow!(
+                    "The max size is {}, but the received email size is {}",
+                    max_size,
+                    email_bytes.len()
+                ));
+            }
+            self.prover.push_email(manipulation_id, email_bytes).await?;
+        } else if let Some(subject_match) =
+            Regex::new(Self::QUERY_SUBJECT_REGEX)?.find(&subject_str)?
+        {
+            let token_name = subject_match.as_str();
+            println!("query token name {}", token_name);
+            let balance = self
+                .chain_client
+                .query_balance(&from_addr, token_name)
+                .await?;
+            let reply = format!(
+                "Your current balance of {} is {}.",
+                token_name,
+                balance.to_string()
+            );
+            println!("Replying with confirmation...{}", reply);
+            self.smtp_client
+                .reply_all(&String::from_utf8(email_bytes.to_vec())?, &reply)?;
+        }
         Ok(())
     }
 

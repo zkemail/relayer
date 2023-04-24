@@ -121,6 +121,10 @@ impl EmailProver for Halo2SimpleProver {
         self.next_pop_nonce += 1;
         Ok(Some((id, email, calldata)))
     }
+
+    fn manipulation_defs(&self) -> &ManipulationDefsJson {
+        &self.manipulation_defs
+    }
 }
 
 impl Halo2SimpleProver {

@@ -53,6 +53,24 @@ impl ChainClient<Halo2SimpleProver> for Halo2Client {
         println!("Transaction hash: {:?}", pending_tx);
         Ok(pending_tx.tx_hash())
     }
+
+    async fn query_balance(&self, email_address: &str, token_name: &str) -> Result<U256> {
+        // let provider = self.provider.clone();
+        // let signer = SignerMiddleware::new(self.provider, self.wallet.with_chain_id(self.chain_id));
+        let contract = ContractInstance::<_, SignerMiddleware<Provider<Http>, LocalWallet>>::new(
+            self.contract_address,
+            self.abi.clone(),
+            &self.signer,
+        );
+        let result = contract
+            .method::<_, U256>(
+                "balanceOfUser",
+                (email_address.to_string(), token_name.to_string()),
+            )?
+            .call()
+            .await?;
+        Ok(result)
+    }
 }
 
 impl Halo2Client {
