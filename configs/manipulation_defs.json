@@ -5,6 +5,8 @@
             "agg_config_path": "./configs/agg_circuit.config",
             "app_pk_path": "./configs/app_1.pk",
             "agg_pk_path": "./configs/agg_1.pk",
+            "max_header_size": 512,
+            "max_body_size": 512,
             "types": [
                 {
                     "type": "Decimal"
@@ -22,6 +24,8 @@
             "agg_config_path": "./configs/agg_circuit.config",
             "app_pk_path": "./configs/app_2.pk",
             "agg_pk_path": "./configs/agg_2.pk",
+            "max_header_size": 512,
+            "max_body_size": 512,
             "types": [
                 {
                     "type": "Decimal"

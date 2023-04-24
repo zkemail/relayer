@@ -121,13 +121,20 @@ impl<P: EmailProver, C: ChainClient<P>> EmailProcesser<P, C> {
         {
             let manipulation_id = subject_match.as_str().parse::<usize>()?;
             println!("manipulation_id {}", manipulation_id);
+            let (header, body, _) = canonicalize_signed_email(email_bytes)?;
             let defs = self.prover.manipulation_defs();
-            let max_size = defs.rules[&manipulation_id].max_size;
-            if email_bytes.len() > max_size {
+            let def = &defs.rules[&manipulation_id];
+            if header.len() > def.max_header_size {
                 return Err(anyhow!(
-                    "The max size is {}, but the received email size is {}",
-                    max_size,
-                    email_bytes.len()
+                    "The max header size is {}, but the received header size is {}",
+                    def.max_header_size,
+                    header.len()
+                ));
+            } else if body.len() > def.max_body_size {
+                return Err(anyhow!(
+                    "The max body size is {}, but the received body size is {}",
+                    def.max_body_size,
+                    body.len()
                 ));
             }
             self.prover.push_email(manipulation_id, email_bytes).await?;
