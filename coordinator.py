@@ -8,24 +8,28 @@ import os
 from dotenv import load_dotenv
 
 # --------- MODAL CLOUD COORDINATOR ------------
-# def filter_condition(file: str):
-#     return ".git/" not in file and "target/" not in file
-
-# image = modal.Image.from_dockerfile(
-#     "/home/ubuntu/Dockerfile",
-#     context_mount=modal.Mount()
-#     # .add_local_dir("./relayer", remote_path="/root/relayer", condition=filter_condition)
-#     # .add_local_dir("./zk-email-verify/build", remote_path="/root/zk-email-verify/build")
-#     # .add_local_dir("./rapidsnark/build", remote_path="/root/rapidsnark/build")
-# )
 image = modal.Image.from_dockerhub(
   "aayushg0/zkemail-modal:modal",
 #   setup_dockerfile_commands=[]
-)
+).pip_install_from_requirements("requirements.txt")
 stub = modal.Stub(image=image)
 
-@stub.function()
-def test(file_contents: str):
+@stub.function(cpu=4)
+@stub.web_endpoint(method="POST")
+def test(file_contents: str, nonce: str):
+    # Execute the 'pwd' command and capture its output
+    result = subprocess.run(['pwd'], capture_output=True, text=True)
+    print("pwd: ", result.stdout.strip())
+
+    # Write the file_contents to the file named after the nonce
+    file_name = f"wallet_{nonce}.eml"
+    with open(file_name, 'w') as file:
+        file.write(file_contents)
+
+    # Print the output of the 'proofgen' command
+    circom_script_path = "/relayer/src/circom_proofgen.sh"
+    result = subprocess.run([circom_script_path, nonce], capture_output=True, text=True)
+    print("circom proofgen", result.stdout.strip())
     return len(file_contents)
 
 # --------- LOCAL COORDINATOR ------------

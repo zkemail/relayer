@@ -98,6 +98,11 @@ modal token set --token-id <tokenid> --token-secret <tokensecret>
 modal deploy --name aayush coordinator.py
 ```
 
+To hit it, take the resulting URL and hit
+```
+curl 'https://ziztuww--aayush-test.modal.run?<query params>'
+```
+
 ## Server Setup
 
 We don't use this server anymore, but if you'd like to call these functions via endpoints, you can use this nginx setup.

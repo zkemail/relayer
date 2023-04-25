@@ -11,9 +11,11 @@ use config::{
     LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY, SMTP_PORT_KEY, ZK_EMAIL_PATH_KEY,
 };
 use dotenv::dotenv;
+use http::StatusCode;
 use imap_client::{EmailReceiver, IMAPAuth};
 use parse_email::*;
 use regex::Regex;
+use reqwest::Client;
 use serde::Deserialize;
 use smtp_client::EmailSenderClient;
 use std::{
@@ -32,7 +34,7 @@ struct EmailEvent {
     to: Option<String>,
 }
 
-async fn handle_email(raw_email: String, zk_email_circom_dir: &String) {
+async fn handle_email(raw_email: String, zk_email_circom_dir: &String) -> Result<()> {
     // Path 1: Write raw_email to ../wallet_{hash}.eml
     let hash = {
         let mut hasher = DefaultHasher::new();
@@ -48,18 +50,44 @@ async fn handle_email(raw_email: String, zk_email_circom_dir: &String) {
     std::thread::sleep(std::time::Duration::from_secs(3));
 
     // Path 2: Send to modal
-    // let webhook_url = "";
-    // let client = reqwest::Client::new();
-    // let response = client
-    //     .post(webhook_url)
-    //     .header("Content-Type", "application/octet-stream")
-    //     .body(raw_email)
-    //     .send()
-    //     .await
-    //     .unwrap();
+    // Construct the URL with query parameters
+    let webhook_url = format!(
+        "https://ziztuww--aayush-test.modal.run?file_contents={}&nonce={}",
+        urlencoding::encode(&raw_email),
+        hash
+    );
 
-    // Path
+    // Create a new reqwest client
+    let client = Client::new();
 
+    // Send the POST request
+    let response_result: Result<reqwest::Response, reqwest::Error> = client
+        .post(&webhook_url)
+        .header("Content-Type", "application/octet-stream")
+        .body(raw_email)
+        .send()
+        .await;
+    let response = response_result?;
+
+    // Check the status code of the response
+    match response.status() {
+        StatusCode::OK => {
+            // Read the response body
+            let response_body = response.text().await?;
+            // Handle the successful response (e.g., print the response body)
+            println!("Response: {}", response_body);
+        }
+        StatusCode::BAD_REQUEST => {
+            // Handle the bad request error (e.g., print an error message)
+            println!("Bad request");
+        }
+        _ => {
+            // Handle other status codes (e.g., print a generic error message)
+            println!("An error occurred");
+        }
+    };
+
+    Ok(())
     // println!("Response status: {}", response.status());
 }
 
@@ -82,7 +110,6 @@ pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) {
             custom_reply = "Send seems to match regex but is invalid! Please try again with this subject: \"Send _ eth to __@__.___\"".to_string();
         }
         println!("Send valid! Validating proof...");
-        // .await;
     } else {
         println!("Send invalid! Regex failed...");
         custom_reply =

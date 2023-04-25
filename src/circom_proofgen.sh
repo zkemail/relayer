@@ -63,4 +63,3 @@ fi
 echo "Finished send to chain! Status: ${status3}"
 
 exit 0
-
