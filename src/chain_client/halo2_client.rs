@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use crate::chain_client::ChainClient;
 use crate::prover::{EmailProver, Halo2SimpleProver};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use ethers::abi::{Abi, Address};
 use ethers::prelude::*;
@@ -14,6 +14,7 @@ pub struct Halo2Client {
     contract_address: H160,
     wallet_abi: Abi,
     erc20_abi: Abi,
+    iman_abi: Abi,
     signer: SignerMiddleware<Provider<Http>, LocalWallet>,
 }
 
@@ -34,6 +35,22 @@ impl ChainClient<Halo2SimpleProver> for Halo2Client {
                 self.wallet_abi.clone(),
                 &self.signer,
             );
+        let manipulator_address = wallet_contract
+            .method::<_, Address>("manipulationOfId", U256::from(manipulation_id))?
+            .call()
+            .await?;
+        let manipulator = ContractInstance::<_, SignerMiddleware<Provider<Http>, LocalWallet>>::new(
+            manipulator_address,
+            self.iman_abi.clone(),
+            &self.signer,
+        );
+        let is_valid = manipulator
+            .method::<_, bool>("verifyWrap", calldata.clone())?
+            .call()
+            .await?;
+        if !is_valid {
+            return Err(anyhow!("invalid proof"));
+        }
 
         println!("Sending transaction with gas price {:?}...", gas_price);
 
@@ -41,6 +58,7 @@ impl ChainClient<Halo2SimpleProver> for Halo2Client {
         let (param, acc, proof) = calldata;
         let call = wallet_contract
             .method::<_, ()>("process", (U256::from(manipulation_id), param, acc, proof))?
+            .legacy()
             .gas_price(max_fee_per_gas); // Set an appropriate gas limit
 
         println!("Calling call: {:?}", call);
@@ -100,6 +118,7 @@ impl Halo2Client {
         contract_address: &str,
         wallet_abi_path: &str,
         erc20_abi_path: &str,
+        iman_abi_path: &str,
         chain_id: u64,
     ) -> Result<Self> {
         let wallet = LocalWallet::from_str(&private_key_hex)?;
@@ -110,10 +129,13 @@ impl Halo2Client {
         let wallet_abi: Abi = serde_json::from_str(wallet_abi_str.as_str())?;
         let erc20_abi_str = fs::read_to_string(erc20_abi_path)?;
         let erc20_abi: Abi = serde_json::from_str(erc20_abi_str.as_str())?;
+        let iman_abi_str = fs::read_to_string(iman_abi_path)?;
+        let iman_abi: Abi = serde_json::from_str(iman_abi_str.as_str())?;
         Ok(Self {
             contract_address,
             wallet_abi,
             erc20_abi,
+            iman_abi,
             signer,
         })
     }

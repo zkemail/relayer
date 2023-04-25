@@ -1,0 +1,90 @@
+[
+    {
+        "inputs": [
+            {
+                "internalType": "bytes",
+                "name": "param",
+                "type": "bytes"
+            }
+        ],
+        "name": "process",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes",
+                "name": "param",
+                "type": "bytes"
+            }
+        ],
+        "name": "retrieveData",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "bytes32",
+                        "name": "headerHash",
+                        "type": "bytes32"
+                    },
+                    {
+                        "internalType": "bytes",
+                        "name": "publicKey",
+                        "type": "bytes"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "fromAddress",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "toAddress",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "manipulationId",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct IManipulator.RetrievedData",
+                "name": "",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes",
+                "name": "param",
+                "type": "bytes"
+            },
+            {
+                "internalType": "bytes",
+                "name": "acc",
+                "type": "bytes"
+            },
+            {
+                "internalType": "bytes",
+                "name": "proof",
+                "type": "bytes"
+            }
+        ],
+        "name": "verifyWrap",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    }
+]

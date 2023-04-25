@@ -148,6 +148,7 @@ async fn main() -> Result<()> {
             env::var(CONTRACT_ADDRESS_KEY)?.as_str(),
             env::var(WALLET_ABI_PATH_KEY)?.as_str(),
             env::var(ERC20_ABI_PATH_KEY)?.as_str(),
+            env::var(IMAN_ABI_PATH_KEY)?.as_str(),
             env::var(CHAIN_ID_KEY)?.as_str().parse::<u64>()?,
         )?,
         _ => panic!("Not supported chain client type"),
