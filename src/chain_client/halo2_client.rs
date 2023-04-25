@@ -25,8 +25,8 @@ impl ChainClient<Halo2SimpleProver> for Halo2Client {
         manipulation_id: usize,
         calldata: <Halo2SimpleProver as EmailProver>::ProofCalldata,
     ) -> Result<H256> {
-        let gas_price = self.signer.provider().get_gas_price().await?;
-        let (max_fee_per_gas, _) = self.signer.provider().estimate_eip1559_fees(None).await?;
+        // let gas_price = self.signer.provider().get_gas_price().await?;
+        // let (max_fee_per_gas, _) = self.signer.provider().estimate_eip1559_fees(None).await?;
         // let provider = self.provider.clone();
         // let signer = SignerMiddleware::new(self.provider, self.wallet.with_chain_id(self.chain_id));
         let wallet_contract =
@@ -52,14 +52,13 @@ impl ChainClient<Halo2SimpleProver> for Halo2Client {
             return Err(anyhow!("invalid proof"));
         }
 
-        println!("Sending transaction with gas price {:?}...", gas_price);
+        // println!("Sending transaction with gas price {:?}...", gas_price);
 
         // Call the process function
         let (param, acc, proof) = calldata;
         let call = wallet_contract
             .method::<_, ()>("process", (U256::from(manipulation_id), param, acc, proof))?
-            .legacy()
-            .gas_price(max_fee_per_gas); // Set an appropriate gas limit
+            .legacy();
 
         println!("Calling call: {:?}", call);
 
