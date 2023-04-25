@@ -12,6 +12,7 @@ pub struct EmailProcesser<P: EmailProver, C: ChainClient<P>> {
     smtp_client: SmtpClient,
     prover: P,
     chain_client: C,
+    scan_url_prefix: String,
 }
 
 impl<P: EmailProver, C: ChainClient<P>> EmailProcesser<P, C> {
@@ -22,12 +23,14 @@ impl<P: EmailProver, C: ChainClient<P>> EmailProcesser<P, C> {
         smtp_client: SmtpClient,
         prover: P,
         chain_client: C,
+        scan_url_prefix: &str,
     ) -> Self {
         Self {
             imap_client,
             smtp_client,
             prover,
             chain_client, // num_unprocessed_email,
+            scan_url_prefix: scan_url_prefix.to_string(),
         }
     }
 
@@ -50,7 +53,8 @@ impl<P: EmailProver, C: ChainClient<P>> EmailProcesser<P, C> {
         self.prover.prove_emails().await?;
         while let Some((id, raw_email, calldata)) = self.prover.pop_calldata().await? {
             let tx_hash = self.chain_client.send_chain(id, calldata).await?;
-            let etherscan_url = format!("https://goerli.etherscan.io/tx/0x{:x}", tx_hash);
+            // let etherscan_url = format!("https://goerli.etherscan.io/tx/0x{:x}", tx_hash);
+            let etherscan_url = format!("{}{:x}", self.scan_url_prefix, tx_hash);
             let reply = format!(
                 "Transaction sent! View Etherscan confirmation: {}.",
                 etherscan_url

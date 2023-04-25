@@ -153,7 +153,13 @@ async fn main() -> Result<()> {
         _ => panic!("Not supported chain client type"),
     };
 
-    let mut processer = EmailProcesser::new(imap_client, smtp_client, prover, chain_client);
+    let mut processer = EmailProcesser::new(
+        imap_client,
+        smtp_client,
+        prover,
+        chain_client,
+        env::var(SCAN_URL_PREFIX_KEY)?.as_str(),
+    );
     loop {
         println!("waiting new emails...");
         processer.wait_new_email()?;

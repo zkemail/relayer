@@ -30,6 +30,8 @@ pub const WALLET_ABI_PATH_KEY: &'static str = "WALLET_ABI_PATH";
 pub const ERC20_ABI_PATH_KEY: &'static str = "ERC20_ABI_PATH";
 pub const CHAIN_ID_KEY: &'static str = "CHAIN_ID";
 
+pub const SCAN_URL_PREFIX_KEY: &'static str = "SCAN_URL_PREFIX";
+
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
