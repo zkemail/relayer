@@ -147,7 +147,7 @@ impl<P: EmailProver, C: ChainClient<P>> EmailProcesser<P, C> {
                 .chain_client
                 .query_balance(&from_addr, token_name)
                 .await?;
-            let reply = format!("Your current balance of {} is {}.", token_name, balance);
+            let reply = format!("You have {} {} now.", balance, token_name);
             println!("Replying with confirmation...{}", reply);
             self.smtp_client
                 .reply_all(&String::from_utf8(email_bytes.to_vec())?, &reply)?;
