@@ -8,7 +8,7 @@ Goerli Wallet Address (circom-only): 0x3b3857eaf44804cce00449b7fd40310e6de6496e
 
 In a new cloud instance, run:
 
-```
+```sh
 sudo apt update
 chmod +x src/circom_proofgen.sh
 chmod +x ../rapidsnark/build/prover
@@ -20,11 +20,13 @@ ip -4 -o addr show scope global | awk '{print $4}' && ip -6 -o addr show scope g
 
 ## Enable TLS/TCP Keepalive
 
-From [here](https://aws.amazon.com/blogs/networking-and-content-delivery/implementing-long-running-tcp-connections-within-vpc-networking/), or else your IMAP connection will drop every 6ish idle minutes.
-```
+From [here](https://aws.amazon.com/blogs/networking-and-content-delivery/implementing-long-running-tcp-connections-within-vpc-networking/), or else your IMAP connection will drop every 6ish idle minutes. Edit: Apparenly this is not enough.
+
+```sh
 echo -e "net.ipv4.tcp_keepalive_time = 45\nnet.ipv4.tcp_keepalive_intvl = 45\nnet.ipv4.tcp_keepalive_probes = 9" | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
 ```
+
 
 ## Directory Setup
 
@@ -44,7 +46,7 @@ Note that you'll have to populate the build folder, run `make` in `zk-email-veri
 
 Test chain connection to verify that your connection to the chain works and simple tx's will send.
 
-```
+```sh
 cargo run --bin chain
 ```
 
@@ -52,7 +54,7 @@ cargo run --bin chain
 
 First, run the relayer.
 
-```
+```sh
 cargo run --bin relayer
 ```
 
@@ -60,7 +62,7 @@ cargo run --bin relayer
 
 To test the proofgen when the relayer is running, send `relayer@sendeth.org` an email then run
 
-```
+```sh
 ./src/cirom_proofgen.sh
 ```
 
@@ -68,9 +70,37 @@ To test the proofgen when the relayer is running, send `relayer@sendeth.org` an 
 
 Then run the prover + infrastructure coordinator.
 
-```
-pip3 install --r requirements.txt
+```sh
+pip3 install -r requirements.txt
 python3 coordinator.py
+```
+
+## Update the docker file
+
+If you ever want to edit the Dockerfile, do:
+Setup:
+```sh
+cp Dockerfile ..
+cd ..
+sudo docker login
+```
+
+Recompile:
+```sh
+sudo docker build -t zkemail-modal .
+sudo docker tag zkemail-modal aayushg0/zkemail-modal:modal
+sudo docker push aayushg0/zkemail-modal:modal
+```
+
+And edit the tag in coordinator.py. To re-deploy the modal instance, do
+```
+modal token set --token-id <tokenid> --token-secret <tokensecret>
+modal deploy --name aayush coordinator.py
+```
+
+To hit it, take the resulting URL and hit
+```
+curl 'https://ziztuww--aayush-test.modal.run?<query params>'
 ```
 
 ## Server Setup
@@ -82,7 +112,7 @@ We don't use this server anymore, but if you'd like to call these functions via 
 ````
 Configure Nginx: Create a new Nginx configuration file for your application:
 
-```bash
+```sh
 sudo nano /etc/nginx/sites-available/sendeth
 ````
 
@@ -146,7 +176,7 @@ sudo ln -s /etc/nginx/sites-available/sendeth /etc/nginx/sites-enabled/
 
 Test the Nginx configuration and restart Nginx:
 
-```
+```sh
 export YOURDOMAIN=sendeth.org
 sudo certbot --nginx -d $YOURDOMAIN -d www.$YOURDOMAIN
 ```
@@ -214,7 +244,7 @@ To enable the security group traffic, run these:
 
 Then in AWS EC2 shell, run
 
-```
+```sh
 sudo ufw enable
 sudo ufw allow http
 sudo ufw allow https

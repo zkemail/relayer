@@ -15,13 +15,13 @@ RUN apt-get update && \
 
 # Clone zk email
 RUN git clone https://github.com/zkemail/zk-email-verify /zk-email-verify
-COPY /root/zk-email-verify/build /zk-email-verify/build
+COPY ../zk-email-verify/build /zk-email-verify/build
 WORKDIR /zk-email-verify
 RUN yarn install
 
 # Clone rapidsnark
 RUN  git clone https://github.com/iden3/rapidsnark /rapidsnark
-COPY /root/rapidsnark/build /rapidsnark/build
+COPY ../rapidsnark/build /rapidsnark/build
 WORKDIR /rapidsnark
 RUN npm install
 RUN git submodule init
@@ -31,7 +31,7 @@ RUN chmod +x /rapidsnark/build/prover
 # RUN npx task buildPistache
 
 # Clone the repository and set it as the working directory
-COPY /root/relayer /relayer
+COPY ../relayer /relayer
 WORKDIR /relayer
 
 # Make necessary files executable
