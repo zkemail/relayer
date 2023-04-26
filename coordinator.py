@@ -20,7 +20,7 @@ stub = modal.Stub(image=image)
 def prove_email(file_contents: str, nonce: str):
     # Executes in /root in modal
     # Write the file_contents to the file named after the nonce
-    file_name = f"wallet_{nonce}.eml"
+    file_name = f"./received_eml/wallet_{nonce}.eml"
     with open(file_name, 'w') as file:
         file.write(file_contents)
     print("file_contents: ", file_contents)
