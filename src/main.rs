@@ -75,15 +75,15 @@ async fn handle_email(raw_email: String, zk_email_circom_dir: &String) -> Result
             // Read the response body
             let response_body = response.text().await?;
             // Handle the successful response (e.g., print the response body)
-            println!("Response: {}", response_body);
+            println!("Modal response: {}", response_body);
         }
         StatusCode::BAD_REQUEST => {
             // Handle the bad request error (e.g., print an error message)
-            println!("Bad request");
+            println!("Bad request to Modal");
         }
         _ => {
             // Handle other status codes (e.g., print a generic error message)
-            println!("An error occurred");
+            println!("An error occurred on Modal...");
         }
     };
 

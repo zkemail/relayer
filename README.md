@@ -77,13 +77,16 @@ python3 coordinator.py
 
 ## Update the docker file
 
-If you ever want to edit the Dockerfile, do:
+If you ever want to edit the Dockerfile, move it one folder up and do:
+
 Setup:
 ```sh
 cp Dockerfile ..
 cd ..
 sudo docker login
 ```
+
+You have to compile the zk-email-verify, relayer, and rapidsnark directories.
 
 Recompile:
 ```sh

@@ -11,17 +11,17 @@ RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && \
 
 # Update the package list and install necessary dependencies
 RUN apt-get update && \
-    apt-get install -y pkg-config libssl-dev build-essential nginx certbot python3-certbot-nginx
+    apt-get install -y python3 python3-pip pkg-config libssl-dev build-essential
 
 # Clone zk email
 RUN git clone https://github.com/zkemail/zk-email-verify /zk-email-verify
-COPY ../zk-email-verify/build /zk-email-verify/build
+COPY ./zk-email-verify/build /zk-email-verify/build
 WORKDIR /zk-email-verify
 RUN yarn install
 
 # Clone rapidsnark
 RUN  git clone https://github.com/iden3/rapidsnark /rapidsnark
-COPY ../rapidsnark/build /rapidsnark/build
+COPY ./rapidsnark/build /rapidsnark/build
 WORKDIR /rapidsnark
 RUN npm install
 RUN git submodule init
@@ -31,11 +31,12 @@ RUN chmod +x /rapidsnark/build/prover
 # RUN npx task buildPistache
 
 # Clone the repository and set it as the working directory
-COPY ../relayer /relayer
+COPY ./relayer /relayer
 WORKDIR /relayer
 
 # Make necessary files executable
 RUN chmod +x /relayer/src/circom_proofgen.sh
 
 # Build the project
-RUN cargo build --release
+# RUN cargo build --release
+RUN ln -s /usr/bin/python3 /usr/bin/python

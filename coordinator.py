@@ -18,15 +18,11 @@ stub = modal.Stub(image=image)
 
 @stub.function(cpu=4)
 def prove_email(file_contents: str, nonce: str):
-    # Execute the 'pwd' command and capture its output
-    result = subprocess.run(['pwd'], capture_output=True, text=True)
-    print("pwd: ", result.stdout.strip())
-
+    # Executes in /root in modal
     # Write the file_contents to the file named after the nonce
     file_name = f"wallet_{nonce}.eml"
     with open(file_name, 'w') as file:
         file.write(file_contents)
-
     print("file_contents: ", file_contents)
 
     # Print the output of the 'proofgen' command
