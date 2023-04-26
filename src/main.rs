@@ -1,12 +1,17 @@
 use anyhow::{anyhow, Result};
 use dotenv::dotenv;
+#[cfg(feature = "ether")]
 use relayer::chain_client::Halo2Client;
 use relayer::config::*;
+#[cfg(feature = "ether")]
 use relayer::imap_client::{IMAPAuth, ImapClient};
 // use parse_email::*;
 // use parse_email::*;
+#[cfg(feature = "ether")]
 use relayer::processer::EmailProcesser;
+#[cfg(feature = "ether")]
 use relayer::prover::Halo2SimpleProver;
+#[cfg(feature = "ether")]
 use relayer::smtp_client::SmtpClient;
 use std::env;
 
@@ -91,6 +96,7 @@ use std::env;
 //     let confirmation = emailer.reply_all(raw_email, &custom_reply);
 // }
 
+#[cfg(feature = "ether")]
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenv().ok();
@@ -194,4 +200,8 @@ async fn main() -> Result<()> {
     //     }
     //     // tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
     // }
+}
+#[cfg(not(feature = "ether"))]
+fn main() {
+    panic!("ether feature must be enabled!");
 }
