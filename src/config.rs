@@ -47,16 +47,16 @@ pub enum RegexType {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ManipulationDef {
-    pub(crate) app_config_path: String,
-    pub(crate) agg_config_path: String,
-    pub(crate) app_pk_path: String,
-    pub(crate) agg_pk_path: String,
-    pub(crate) max_header_size: usize,
-    pub(crate) max_body_size: usize,
-    pub(crate) types: Vec<RegexType>,
+    pub app_config_path: String,
+    pub agg_config_path: String,
+    pub app_pk_path: String,
+    pub agg_pk_path: String,
+    pub max_header_size: usize,
+    pub max_body_size: usize,
+    pub types: Vec<RegexType>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ManipulationDefsJson {
-    pub(crate) rules: HashMap<usize, ManipulationDef>,
+    pub rules: HashMap<usize, ManipulationDef>,
 }

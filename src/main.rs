@@ -1,22 +1,13 @@
-// mod chain;
-mod chain_client;
-mod config;
-mod imap_client;
-mod prover;
-// pub mod parse_email;
-// mod parse_email;
-mod processer;
-mod smtp_client;
 use anyhow::{anyhow, Result};
-use chain_client::Halo2Client;
-use config::*;
 use dotenv::dotenv;
-use imap_client::{IMAPAuth, ImapClient};
+use relayer::chain_client::Halo2Client;
+use relayer::config::*;
+use relayer::imap_client::{IMAPAuth, ImapClient};
 // use parse_email::*;
 // use parse_email::*;
-use processer::EmailProcesser;
-use prover::Halo2SimpleProver;
-use smtp_client::SmtpClient;
+use relayer::processer::EmailProcesser;
+use relayer::prover::Halo2SimpleProver;
+use relayer::smtp_client::SmtpClient;
 use std::env;
 
 // #[derive(Debug, Deserialize)]
