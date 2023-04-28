@@ -112,9 +112,6 @@ impl EmailReceiver {
         let uids = self.imap_session.uid_search("UNSEEN")?;
         let mut fetches = vec![];
         for (idx, uid) in uids.into_iter().enumerate() {
-            if idx > 50 {
-                continue;
-            }
             println!("uid {}", uid);
             let fetched = self
                 .imap_session

@@ -51,41 +51,41 @@ async fn handle_email(raw_email: String, zk_email_circom_dir: &String) -> Result
 
     // Path 2: Send to modal
     // Construct the URL with query parameters
-    let webhook_url = format!(
-        "https://ziztuww--aayush-test.modal.run?file_contents={}&nonce={}",
-        urlencoding::encode(&raw_email),
-        hash
-    );
+    // let webhook_url = format!(
+    //     "https://ziztuww--aayush-test.modal.run?file_contents={}&nonce={}",
+    //     urlencoding::encode(&raw_email),
+    //     hash
+    // );
 
-    // Create a new reqwest client
-    let client = Client::new();
+    // // Create a new reqwest client
+    // let client = Client::new();
 
-    // Send the POST request
-    let response_result: Result<reqwest::Response, reqwest::Error> = client
-        .post(&webhook_url)
-        .header("Content-Type", "application/octet-stream")
-        .body(raw_email)
-        .send()
-        .await;
-    let response = response_result?;
+    // // Send the POST request
+    // let response_result: Result<reqwest::Response, reqwest::Error> = client
+    //     .post(&webhook_url)
+    //     .header("Content-Type", "application/octet-stream")
+    //     .body(raw_email)
+    //     .send()
+    //     .await;
+    // let response = response_result?;
 
-    // Check the status code of the response
-    match response.status() {
-        StatusCode::OK => {
-            // Read the response body
-            let response_body = response.text().await?;
-            // Handle the successful response (e.g., print the response body)
-            println!("Modal response: {}", response_body);
-        }
-        StatusCode::BAD_REQUEST => {
-            // Handle the bad request error (e.g., print an error message)
-            println!("Bad request to Modal");
-        }
-        _ => {
-            // Handle other status codes (e.g., print a generic error message)
-            println!("An error occurred on Modal...");
-        }
-    };
+    // // Check the status code of the response
+    // match response.status() {
+    //     StatusCode::OK => {
+    //         // Read the response body
+    //         let response_body = response.text().await?;
+    //         // Handle the successful response (e.g., print the response body)
+    //         println!("Modal response: {}", response_body);
+    //     }
+    //     StatusCode::BAD_REQUEST => {
+    //         // Handle the bad request error (e.g., print an error message)
+    //         println!("Bad request to Modal");
+    //     }
+    //     _ => {
+    //         // Handle other status codes (e.g., print a generic error message)
+    //         println!("An error occurred on Modal...");
+    //     }
+    // };
 
     Ok(())
     // println!("Response status: {}", response.status());

@@ -16,19 +16,22 @@ image = modal.Image.from_dockerhub(
 ).pip_install_from_requirements("requirements.txt")
 stub = modal.Stub(image=image)
 
-@stub.function(cpu=4)
+@stub.function(cpu=4, image=image)
 def prove_email(file_contents: str, nonce: str):
     # Executes in /root in modal
+    result = subprocess.run(["ls"], capture_output=True, text=True)
+    print("ls result: ", result.stdout.strip())
+
     # Write the file_contents to the file named after the nonce
-    file_name = f"./received_eml/wallet_{nonce}.eml"
+    file_name = f"/root/relayer/received_eml/wallet_{nonce}.eml"
     with open(file_name, 'w') as file:
         file.write(file_contents)
     print("file_contents: ", file_contents)
 
     # Print the output of the 'proofgen' command
-    circom_script_path = "/relayer/src/circom_proofgen.sh"
+    circom_script_path = "/root/relayer /src/circom_proofgen.sh"
     result = subprocess.run([circom_script_path, nonce], capture_output=True, text=True)
-    print("circom proofgen", result.stdout.strip())
+    print("proofgen modal python output; ", result.stdout.strip())
     return len(file_contents)
 
 # --------- LOCAL COORDINATOR ------------
@@ -43,14 +46,16 @@ class DirectoryChangeHandler(FileSystemEventHandler):
             print(f"New file {event.src_path} has been added.")
             file_name = os.path.basename(event.src_path)
             if (is_eml_file(file_name)):
-                with open(file_name, 'r') as file:
+                with open(event.src_path, 'r') as file:
                     email_content = file.read()
                 nonce = file_name[file_name.rfind('_') + 1:file_name.rfind('.')]
                 if LOCAL_OR_MODAL == "local":
                     subprocess.run(["./src/circom_proofgen.sh", nonce])
                 else:
-                    prove_email(email_content, nonce)
+                    with stub.run():
+                        prove_email.call(email_content, nonce)
 
+@stub.local_entrypoint()
 def prove_on_email(path: str):
     event_handler = DirectoryChangeHandler()
     observer = Observer()
@@ -73,5 +78,7 @@ if __name__ == "__main__":
     if path is None:
         print("Error: INCOMING_EML_PATH is not set in the .env file")
         sys.exit(1)
+    else:
+        print("Monitoring directory: ", path)
 
     prove_on_email(path)
