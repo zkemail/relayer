@@ -18,6 +18,14 @@ cargo build --release
 ip -4 -o addr show scope global | awk '{print $4}' && ip -6 -o addr show scope global | awk '{print $4}' # Point the DNS to these raw IPs
 ```
 
+## Enable TLS/TCP Keepalive
+
+From [here](https://aws.amazon.com/blogs/networking-and-content-delivery/implementing-long-running-tcp-connections-within-vpc-networking/), or else your IMAP connection will drop every 6ish idle minutes.
+```
+echo -e "net.ipv4.tcp_keepalive_time = 45\nnet.ipv4.tcp_keepalive_intvl = 45\nnet.ipv4.tcp_keepalive_probes = 9" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+```
+
 ## Directory Setup
 
 ```

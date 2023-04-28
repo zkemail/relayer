@@ -223,6 +223,8 @@ pub async fn send_to_chain(
         Ok(tx) => tx,
         Err(e) => {
             println!("Error: {:?}", e);
+            reply_with_message(nonce, "Error sending transaction. Most likely your email domain is not supported (must be @gmail.com, @hotmail.com, @ethereum.org, or @skiff.com).");
+            println!("Error bytes: {:?}", e.as_revert());
             return Err(e.into());
         }
     };
@@ -238,7 +240,10 @@ fn reply_with_etherscan(nonce: &str, tx_hash: H256) {
         etherscan_url
     );
     println!("Replying with confirmation...{}", reply);
+    reply_with_message(nonce, &reply);
+}
 
+fn reply_with_message(nonce: &str, reply: &str) {
     dotenv().ok();
     let mut sender: EmailSenderClient = EmailSenderClient::new(
         env::var(LOGIN_ID_KEY).unwrap().as_str(),
