@@ -1,3 +1,5 @@
+boto3==1.26.123
 modal_client==0.48.1864
 python-dotenv==1.0.0
+requests==2.27.1
 watchdog==3.0.0

@@ -52,7 +52,7 @@ async fn handle_email(raw_email: String, zk_email_circom_dir: &String) -> Result
     // Path 2: Send to modal
     // Construct the URL with query parameters
     // let webhook_url = format!(
-    //     "https://ziztuww--aayush-test.modal.run?file_contents={}&nonce={}",
+    //     "https://ziztuww--aayush-test.modal.run?aws_url={}&nonce={}",
     //     urlencoding::encode(&raw_email),
     //     hash
     // );
