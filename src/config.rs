@@ -1,4 +1,4 @@
-pub const ZK_EMAIL_PATH_KEY: &'static str = "ZK_EMAIL_CIRCOM_PATH";
+pub const ZK_EMAIL_PATH_KEY: &'static str = "LOCAL_ZK_EMAIL_CIRCOM_PATH";
 
 pub const IMAP_DOMAIN_NAME_KEY: &'static str = "IMAP_DOMAIN_NAME";
 pub const IMAP_PORT_KEY: &'static str = "IMAP_PORT";

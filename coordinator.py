@@ -143,8 +143,9 @@ def upload_file_to_s3(local_file_path, bucket_name, nonce):
 # --------- MODAL CLOUD COORDINATOR ------------
 image = modal.Image.from_dockerhub(
     "aayushg0/zkemail-modal:modal",
-    setup_dockerfile_commands=["RUN ls", "RUN cp -r /relayer /root/relayer", "RUN cp -r /rapidsnark /root/rapidsnark", "RUN cp -r /zk-email-verify /root/zk-email-verify"]
-).pip_install_from_requirements("requirements.txt")
+    setup_dockerfile_commands=["RUN apt-get install -y python3 python-is-python3 python3-pip",
+                               "RUN cp -r /relayer /root/relayer", "RUN cp -r /rapidsnark /root/rapidsnark",
+                               "RUN cp -r /zk-email-verify /root/zk-email-verify"]).pip_install_from_requirements("requirements.txt")
 stub = modal.Stub(image=image)
 
 
@@ -167,27 +168,27 @@ def prove_email(file_contents: str, nonce: str):
 stub['credentials_secret'] = modal.Secret(merged_credentials)
 
 
-@stub.function(cpu=4, secret=stub['credentials_secret'])
+@stub.function(cpu=14, memory=6000, secret=stub['credentials_secret'])
 @stub.web_endpoint(method="POST")
 def pull_and_prove_email(aws_url: str, nonce: str):
     session = boto3.Session()
     print("Access key id: ", session.get_credentials().access_key)
 
     # Executes in /root in modal
-    result = subprocess.run(["ls", "//root/zk-email-verify//build/email/email_cpp/email"], capture_output=True, text=True)
-    print("ls //root/zk-email-verify//build/email/email_cpp/email result: ", result.stdout.strip())
+    print("ls //root/zk-email-verify//build/email/email_cpp result: ")
+    result = subprocess.run(["ls", "//root/zk-email-verify//build/email/email_cpp"], text=True)
 
     # Executes in /root in modal
-    result = subprocess.run(["ls", "/root/relayer/received_eml//input_16774424747470653076.json"], capture_output=True, text=True)
-    print("ls /root/relayer/received_eml//input_16774424747470653076.json result: ", result.stdout.strip())
+    print("ls /root/relayer/received_eml//input_16774424747470653076.json result: ")
+    result = subprocess.run(["ls", "/root/relayer/received_eml//input_16774424747470653076.json"], text=True)
 
     # Executes in /root in modal
-    result = subprocess.run(["ls", "/root/zk-email-verify//build/email/witness_16774424747470653076.wtns    "], capture_output=True, text=True)
-    print("ls /root/zk-email-verify//build/email/witness_16774424747470653076.wtns   result: ", result.stdout.strip())
+    print("ls /root/zk-email-verify//build/email result: ")
+    result = subprocess.run(["ls", "/root/zk-email-verify//build/email"], text=True)
 
     # Executes in /root in modal
-    result = subprocess.run(["mkdir", "./relayer/received_eml"], capture_output=True, text=True)
-    print("ls ./relayer/received_eml result: ", result.stdout.strip())
+    print("mkdir ./relayer/received_eml result: ")
+    result = subprocess.run(["mkdir", "./relayer/received_eml"], text=True)
 
     download_and_write_file(aws_url, nonce)
 
@@ -195,8 +196,8 @@ def pull_and_prove_email(aws_url: str, nonce: str):
     circom_script_path = "/relayer/src/circom_proofgen.sh"
     new_env = os.environ.copy()
     print(new_env)
-    result = subprocess.run([circom_script_path, nonce], capture_output=True, text=True, env=new_env)
-    print("circom proofgen", result.stdout.strip())
+    print("circom proofgen...")
+    subprocess.run([circom_script_path, nonce], text=True, env=new_env)
     return
 
 # --------- LOCAL COORDINATOR ------------
