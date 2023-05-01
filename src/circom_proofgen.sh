@@ -7,7 +7,6 @@ elif source "/root/relayer/.env"; then
     echo "Sourcing from /home/ubuntu/relayer/.env failed, sourced from /root/relayer/.env"
 else
     echo "Sourcing from both /home/ubuntu/relayer/.env and /root/relayer/.env failed, writing args to /root/relayer/.env"
-    export $(grep -v '^#' /root/relayer/.env | xargs)
 fi
 
 if [ $# -ne 1 ]; then
@@ -77,6 +76,7 @@ fi
 
 echo "Finished proofgen! Status: ${status2}"
 
+# TODO: Upgrade debug -> release and edit dockerfile to use release
 echo "${HOME}/relayer/target/debug/chain ${prover_output_path} ${nonce}"
 "${HOME}/relayer/target/debug/chain" "${prover_output_path}" "${nonce}"
 status3=$?

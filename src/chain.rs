@@ -16,7 +16,7 @@ use ethers::prelude::*;
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
 // use hex;
-use crate::config::{LOGIN_ID_KEY, LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY};
+use crate::config::{INCOMING_EML_PATH, LOGIN_ID_KEY, LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY};
 use crate::smtp_client::EmailSenderClient;
 use hex_literal::hex;
 use k256::ecdsa::SigningKey;
@@ -253,6 +253,8 @@ fn reply_with_message(nonce: &str, reply: &str) {
         Some(env::var(SMTP_DOMAIN_NAME_KEY).unwrap().as_str()),
     );
     // Read raw email from received_eml/wallet_{nonce}.eml
-    let raw_email = fs::read_to_string(format!("./received_eml/wallet_{}.eml", nonce)).unwrap();
+    let eml_var = env::var(INCOMING_EML_PATH).unwrap();
+
+    let raw_email = fs::read_to_string(format!("{}/wallet_{}.eml", eml_var, nonce)).unwrap();
     let confirmation = sender.reply_all(&raw_email, &reply);
 }

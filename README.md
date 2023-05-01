@@ -1,6 +1,6 @@
 # Relayer
 
-A permissionless Rust Axum webserver relayer service that reads email and responds to it. Uses IMAP to receive email and SMTP to send replies.
+A permissionless Rust IMAP + SMTP server that reads email via imap, creates zk proofs of it, and replies to it. Uses IMAP to receive email and SMTP to send replies.
 
 Goerli Wallet Address (circom-only): 0x3b3857eaf44804cce00449b7fd40310e6de6496e
 
@@ -77,22 +77,22 @@ python3 coordinator.py
 
 ## Update the docker file
 
-If you ever want to edit the Dockerfile, move it one folder up and do:
+If you want to edit the Dockerfile or compile a new image, move it one folder up (for now) and setup with these commands:
 
 Setup:
 ```sh
 cp Dockerfile ..
 cd ..
 sudo docker login
+# This command is needed so that git cargo dependencies in docker can be pulled
+echo -e '\n[url "ssh://"]\n\tinsteadOf = git://' >> ~/.gitconfig
 ```
 
 You have to compile the zk-email-verify, relayer, and rapidsnark directories.
 
 Recompile:
 ```sh
-sudo docker build -t zkemail-modal .
-sudo docker tag zkemail-modal aayushg0/zkemail-modal:modal
-sudo docker push aayushg0/zkemail-modal:modal
+sudo docker build -t zkemail-modal . && sudo docker tag zkemail-modal aayushg0/zkemail-modal:modal && sudo docker push aayushg0/zkemail-modal:modal
 ```
 
 And edit the tag in coordinator.py. To re-deploy the modal instance, do
