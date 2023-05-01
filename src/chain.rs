@@ -170,6 +170,7 @@ pub async fn send_to_chain(
     let contract_address: Address = std::env::var("CONTRACT_ADDRESS").unwrap().parse()?;
 
     // Get the private key from the environment variable
+    println!("alchemy_api_key: {}", alchemy_api_key);
     let private_key_hex =
         std::env::var("PRIVATE_KEY").expect("The PRIVATE_KEY environment variable must be set");
     let rpcurl = if test {
@@ -177,6 +178,7 @@ pub async fn send_to_chain(
     } else {
         std::env::var("RPC_URL").expect("The RPC_URL environment variable must be set")
     };
+    println!("rpcurl: {}", rpcurl);
 
     let provider = Provider::<Http>::try_from(rpcurl)?;
     let wallet = LocalWallet::from_str(&private_key_hex)?;

@@ -11,32 +11,32 @@ RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && \
 
 # Update the package list and install necessary dependencies
 RUN apt-get update && \
-    apt-get install -y python3 python3-pip pkg-config libssl-dev build-essential
+    apt install -y cmake build-essential pkg-config libssl-dev libgmp-dev libsodium-dev nasm
 
 # Clone zk email
-RUN git clone https://github.com/zkemail/zk-email-verify /zk-email-verify
+RUN git clone https://github.com/zkemail/zk-email-verify -b refactor /zk-email-verify
 COPY ./zk-email-verify/build /zk-email-verify/build
 WORKDIR /zk-email-verify
 RUN yarn install
 
 # Clone rapidsnark
-RUN  git clone https://github.com/iden3/rapidsnark /rapidsnark
+RUN  git clone https://github.com/Divide-By-0/rapidsnark /rapidsnark
 COPY ./rapidsnark/build /rapidsnark/build
 WORKDIR /rapidsnark
 RUN npm install
 RUN git submodule init
 RUN git submodule update
 RUN chmod +x /rapidsnark/build/prover
-# RUN npx task createFieldSources
-# RUN npx task buildPistache
+RUN npx task createFieldSources
+RUN npx task buildPistache
+RUN npx task buildProver
 
 # Clone the repository and set it as the working directory
-COPY ./relayer /relayer
+COPY ./relayer/target /relayer/target
+COPY ./relayer/src /relayer/src
+COPY ./relayer/abi /relayer/abi
+COPY ./relayer/received_eml/.placeholder /relayer/received_eml/.placeholder
 WORKDIR /relayer
 
 # Make necessary files executable
 RUN chmod +x /relayer/src/circom_proofgen.sh
-
-# Build the project
-# RUN cargo build --release
-RUN ln -s /usr/bin/python3 /usr/bin/python
