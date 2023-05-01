@@ -29,21 +29,21 @@ public_path="${prover_output_path}/rapidsnark_public_${nonce}.json"
 
 echo "npx tsx ${zk_email_path}/src/scripts/generate_input.ts --email_file=${wallet_eml_path} --nonce=${nonce}"
 npx tsx "${zk_email_path}/src/scripts/generate_input.ts" --email_file="${wallet_eml_path}" --nonce="${nonce}"
-status0=$?
+status_inputgen=$?
 
-echo "Finished input gen! Status: ${status0}"
-if [ $status0 -ne 0 ]; then
-    echo "generate_input.ts failed with status: ${status0}"
+echo "Finished input gen! Status: ${status_inputgen}"
+if [ $status_inputgen -ne 0 ]; then
+    echo "generate_input.ts failed with status: ${status_inputgen}"
     exit 1
 fi
 
 echo "node ${build_dir}/${CIRCUIT_NAME}_js/generate_witness.js ${build_dir}/${CIRCUIT_NAME}_js/${CIRCUIT_NAME}.wasm ${input_wallet_path} ${witness_path}"
 node "${build_dir}/${CIRCUIT_NAME}_js/generate_witness.js" "${build_dir}/${CIRCUIT_NAME}_js/${CIRCUIT_NAME}.wasm" "${input_wallet_path}" "${witness_path}"
 
-status_node=$?
-echo "status_node: ${status_node}"
-if [ $status_node -ne 0 ]; then
-    echo "generate_witness.js failed with status: ${status_node}"
+status_jswitgen=$?
+echo "status_jswitgen: ${status_jswitgen}"
+if [ $status_jswitgen -ne 0 ]; then
+    echo "generate_witness.js failed with status: ${status_jswitgen}"
     exit 1
 fi
 
@@ -67,25 +67,23 @@ fi
 
 echo "${HOME}/rapidsnark/build/prover ${build_dir}/${CIRCUIT_NAME}.zkey ${witness_path} ${proof_path} ${public_path}"
 "${HOME}/rapidsnark/build/prover" "${build_dir}/${CIRCUIT_NAME}.zkey" "${witness_path}" "${proof_path}" "${public_path}"
-status2=$?
+status_prover=$?
 
-if [ $status2 -ne 0 ]; then
-    echo "prover failed with status: ${status2}"
+if [ $status_prover -ne 0 ]; then
+    echo "prover failed with status: ${status_prover}"
     exit 1
 fi
 
-echo "Finished proofgen! Status: ${status2}"
+echo "Finished proofgen! Status: ${status_prover}"
 
 # TODO: Upgrade debug -> release and edit dockerfile to use release
 echo "${HOME}/relayer/target/debug/chain ${prover_output_path} ${nonce}"
 "${HOME}/relayer/target/debug/chain" "${prover_output_path}" "${nonce}"
-status3=$?
-
-if [ $status3 -ne 0 ]; then
-    echo "Chain send failed with status: ${status3}"
+status_chain=$?
+if [ $status_chain -ne 0 ]; then
+    echo "Chain send failed with status: ${status_chain}"
     exit 1
 fi
 
-echo "Finished send to chain! Status: ${status3}"
-
+echo "Finished send to chain! Status: ${status_chain}"
 exit 0
