@@ -11,7 +11,6 @@ mod smtp_client;
 use dotenv::dotenv;
 use ethers::abi::Abi;
 use ethers::contract::ContractError;
-use ethers::core::types::TransactionRequest;
 use ethers::prelude::*;
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};

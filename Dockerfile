@@ -31,12 +31,16 @@ RUN npx task createFieldSources
 RUN npx task buildPistache
 RUN npx task buildProver
 
-# Clone the repository and set it as the working directory
+# Clone the repository and set it as the working directory (uses localdir due to no-oss)
+# RUN git clone https://github.com/zkemail/relayer /relayer
 COPY ./relayer/target /relayer/target
 COPY ./relayer/src /relayer/src
 COPY ./relayer/abi /relayer/abi
 COPY ./relayer/received_eml/.placeholder /relayer/received_eml/.placeholder
 WORKDIR /relayer
+RUN cargo install
+RUN cargo build --release
+RUN cargo build
 
 # Make necessary files executable
 RUN chmod +x /relayer/src/circom_proofgen.sh

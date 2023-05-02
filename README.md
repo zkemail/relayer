@@ -6,15 +6,25 @@ Goerli Wallet Address (circom-only): 0x3b3857eaf44804cce00449b7fd40310e6de6496e
 
 ## Setup
 
-In a new cloud instance, run:
+In a new cloud instance, install Rust:
+
+```sh
+curl https://sh.rustup.rs -sSf | sh
+```
+
+And then:
 
 ```sh
 sudo apt update
-chmod +x src/circom_proofgen.sh
-chmod +x ../rapidsnark/build/prover
-sudo apt-get install -y pkg-config libssl-dev build-essential nginx certbot python3-certbot-nginx
-curl https://sh.rustup.rs -sSf | sh
+sudo apt install -y pkg-config libssl-dev build-essential libfontconfig1-dev
 cargo build --release
+chmod +x src/circom_proofgen.sh
+```
+
+If you want to run a local prover, also run:
+
+```
+chmod +x ../rapidsnark/build/prover
 ip -4 -o addr show scope global | awk '{print $4}' && ip -6 -o addr show scope global | awk '{print $4}' # Point the DNS to these raw IPs
 ```
 
@@ -26,7 +36,6 @@ From [here](https://aws.amazon.com/blogs/networking-and-content-delivery/impleme
 echo -e "net.ipv4.tcp_keepalive_time = 45\nnet.ipv4.tcp_keepalive_intvl = 45\nnet.ipv4.tcp_keepalive_probes = 9" | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
 ```
-
 
 ## Directory Setup
 
@@ -80,6 +89,7 @@ python3 coordinator.py
 If you want to edit the Dockerfile or compile a new image, move it one folder up (for now) and setup with these commands:
 
 Setup:
+
 ```sh
 cp Dockerfile ..
 cd ..
@@ -91,17 +101,20 @@ echo -e '\n[url "ssh://"]\n\tinsteadOf = git://' >> ~/.gitconfig
 You have to compile the zk-email-verify, relayer, and rapidsnark directories.
 
 Recompile:
+
 ```sh
 sudo docker build -t zkemail-modal . && sudo docker tag zkemail-modal aayushg0/zkemail-modal:modal && sudo docker push aayushg0/zkemail-modal:modal
 ```
 
 And edit the tag in coordinator.py. To re-deploy the modal instance, do
+
 ```
 modal token set --token-id <tokenid> --token-secret <tokensecret>
 modal deploy --name aayush coordinator.py
 ```
 
 To hit it, take the resulting URL and hit
+
 ```
 curl 'https://ziztuww--aayush-test.modal.run?<query params>'
 ```
@@ -109,6 +122,10 @@ curl 'https://ziztuww--aayush-test.modal.run?<query params>'
 ## Server Setup
 
 We don't use this server anymore, but if you'd like to call these functions via endpoints, you can use this nginx setup.
+
+```
+sudo apt-get install nginx certbot python3-certbot-nginx
+```
 
 ### Turn on nginx
 

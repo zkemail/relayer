@@ -66,6 +66,8 @@ if os.path.isfile(env_example_path):
         if not var_name.startswith("LOCAL_"):
             var_value = os.getenv(var_name)
             if var_value is not None:
+                # TODO: Make this cleaner; remove all uses of a non local/modal path env var
+                env_credentials[var_name] = var_value
                 var_name = var_name.replace("MODAL_", "")
                 env_credentials[var_name] = var_value
 
@@ -143,8 +145,8 @@ def upload_file_to_s3(local_file_path, bucket_name, nonce):
 # --------- MODAL CLOUD COORDINATOR ------------
 image = modal.Image.from_dockerhub(
     "aayushg0/zkemail-modal:modal",
-    setup_dockerfile_commands=["RUN apt-get install -y python3 python-is-python3 python3-pip",
-                               "RUN cp -r /relayer /root/relayer", "RUN cp -r /rapidsnark /root/rapidsnark",
+    setup_dockerfile_commands=["RUN apt-get install -y python3 python-is-python3 python3-pip", "RUN cp -r /rapidsnark /root/rapidsnark",
+                               "RUN cp -r /relayer /root/relayer", "RUN ls",
                                "RUN cp -r /zk-email-verify /root/zk-email-verify"]).pip_install_from_requirements("requirements.txt")
 stub = modal.Stub(image=image)
 
@@ -159,8 +161,8 @@ def prove_email(file_contents: str, nonce: str):
 
     # Print the output of the 'proofgen' command
     circom_script_path = "/root/relayer/src/circom_proofgen.sh"
-    result = subprocess.run([circom_script_path, nonce], capture_output=True, text=True)
-    print("proofgen modal python output; ", result.stdout.strip())
+    print("proofgen modal python output; ")
+    subprocess.run([circom_script_path, nonce], check=False, text=True)
     return len(file_contents)
 
 
@@ -174,29 +176,15 @@ def pull_and_prove_email(aws_url: str, nonce: str):
     session = boto3.Session()
     print("Access key id: ", session.get_credentials().access_key)
 
-    # Executes in /root in modal
-    print("ls //root/zk-email-verify//build/email/email_cpp result: ")
-    result = subprocess.run(["ls", "//root/zk-email-verify//build/email/email_cpp"], text=True)
-
-    # Executes in /root in modal
-    print("ls /root/relayer/received_eml//input_16774424747470653076.json result: ")
-    result = subprocess.run(["ls", "/root/relayer/received_eml//input_16774424747470653076.json"], text=True)
-
-    # Executes in /root in modal
-    print("ls /root/zk-email-verify//build/email result: ")
-    result = subprocess.run(["ls", "/root/zk-email-verify//build/email"], text=True)
-
-    # Executes in /root in modal
-    print("mkdir ./relayer/received_eml result: ")
-    result = subprocess.run(["mkdir", "./relayer/received_eml"], text=True)
+    print("Moved to dockerfile, will take effect on recompilation: ")
+    subprocess.run(["cp", "/root/relayer/target/x86_64-unknown-linux-gnu/debug/chain", "/root/relayer/target/debug/"], text=True)
+    subprocess.run(["mkdir", "./relayer/proofs"], text=True)
 
     download_and_write_file(aws_url, nonce)
 
     # Print the output of the 'proofgen' command
     circom_script_path = "/relayer/src/circom_proofgen.sh"
     new_env = os.environ.copy()
-    print(new_env)
-    print("circom proofgen...")
     subprocess.run([circom_script_path, nonce], text=True, env=new_env)
     return
 
