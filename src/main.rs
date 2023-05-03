@@ -5,7 +5,6 @@ mod parse_email;
 mod processer;
 mod smtp_client;
 mod strings;
-use strings::{first_reply, invalid_reply};
 use anyhow::{anyhow, Result};
 use config::{
     IMAP_AUTH_TYPE_KEY, IMAP_AUTH_URL_KEY, IMAP_CLIENT_ID_KEY, IMAP_CLIENT_SECRET_KEY,
@@ -27,6 +26,7 @@ use std::{
     fs,
     hash::{Hash, Hasher},
 };
+use strings::{first_reply, invalid_reply};
 
 #[derive(Debug, Deserialize)]
 struct EmailEvent {
@@ -104,7 +104,9 @@ pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) {
     println!("Subject, from: {:?} {:?}", subject, from);
 
     // Validate subject, and send rejection/reformatting email if necessary
-    let re = Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc|dai|ETH|USDC|DAI) to (.+@.+(\..+)+)").unwrap();
+    let re =
+        Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc|dai|ETH|USDC|DAI) to (.+@.+(\..+)+)")
+            .unwrap();
     let subject_regex = re.clone();
     let mut custom_reply: String = "".to_string();
     if subject_regex.is_match(subject.as_str()) {
@@ -150,16 +152,21 @@ async fn main() -> Result<()> {
         panic!("Not supported auth type.");
     };
 
-    let mut receiver = EmailReceiver::construct(&domain_name, port, imap_auth).await?;
+    let mut receiver = EmailReceiver::construct(&domain_name, port, imap_auth.clone()).await?;
     let mut sender: EmailSenderClient = EmailSenderClient::new(
         env::var(LOGIN_ID_KEY)?.as_str(),
         env::var(LOGIN_PASSWORD_KEY)?.as_str(),
         Some(env::var(SMTP_DOMAIN_NAME_KEY)?.as_str()),
     );
+    println!("Email receiver constructed with auto-reconnect.");
     loop {
-        receiver.wait_new_email()?;
+        receiver
+            .wait_new_email(&domain_name, port, &imap_auth.clone())
+            .await?;
         println!("new email!");
-        let fetches = receiver.retrieve_new_emails()?;
+        let fetches = receiver
+            .retrieve_new_emails(&domain_name, port, &imap_auth.clone())
+            .await?;
         for fetched in fetches.into_iter() {
             for fetch in fetched.into_iter() {
                 if let Some(e) = fetch.envelope() {
