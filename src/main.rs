@@ -4,6 +4,8 @@ mod imap_client;
 mod parse_email;
 mod processer;
 mod smtp_client;
+mod strings;
+use strings::{first_reply, invalid_reply};
 use anyhow::{anyhow, Result};
 use config::{
     IMAP_AUTH_TYPE_KEY, IMAP_AUTH_URL_KEY, IMAP_CLIENT_ID_KEY, IMAP_CLIENT_SECRET_KEY,
@@ -34,6 +36,50 @@ struct EmailEvent {
     to: Option<String>,
 }
 
+// Used for Rust to automatically send to modal
+// However, I use the python coordinator for now since
+// this code needs to add aws s3 upload code to reach parity with that.
+async fn send_to_modal(raw_email: String, hash: u64) -> Result<()> {
+    // Path 2: Send to modal
+    // Construct the URL with query parameters
+    let webhook_url = format!(
+        "https://ziztuww--aayush-test.modal.run?aws_url={}&nonce={}",
+        urlencoding::encode(&raw_email),
+        hash
+    );
+
+    // Create a new reqwest client
+    let client = Client::new();
+
+    // Send the POST request
+    let response_result: Result<reqwest::Response, reqwest::Error> = client
+        .post(&webhook_url)
+        .header("Content-Type", "application/octet-stream")
+        .body(raw_email)
+        .send()
+        .await;
+    let response = response_result?;
+
+    // Check the status code of the response
+    match response.status() {
+        StatusCode::OK => {
+            // Read the response body
+            let response_body = response.text().await?;
+            // Handle the successful response (e.g., print the response body)
+            println!("Modal response: {}", response_body);
+        }
+        StatusCode::BAD_REQUEST => {
+            // Handle the bad request error (e.g., print an error message)
+            println!("Bad request to Modal");
+        }
+        _ => {
+            // Handle other status codes (e.g., print a generic error message)
+            println!("An error occurred on Modal...");
+        }
+    };
+    Ok(())
+}
+
 async fn handle_email(raw_email: String, zk_email_circom_dir: &String) -> Result<()> {
     // Path 1: Write raw_email to ../wallet_{hash}.eml
     let hash = {
@@ -48,45 +94,6 @@ async fn handle_email(raw_email: String, zk_email_circom_dir: &String) -> Result
         Err(e) => println!("Error writing data to file: {}", e),
     }
     std::thread::sleep(std::time::Duration::from_secs(3));
-
-    // Path 2: Send to modal
-    // Construct the URL with query parameters
-    // let webhook_url = format!(
-    //     "https://ziztuww--aayush-test.modal.run?aws_url={}&nonce={}",
-    //     urlencoding::encode(&raw_email),
-    //     hash
-    // );
-
-    // // Create a new reqwest client
-    // let client = Client::new();
-
-    // // Send the POST request
-    // let response_result: Result<reqwest::Response, reqwest::Error> = client
-    //     .post(&webhook_url)
-    //     .header("Content-Type", "application/octet-stream")
-    //     .body(raw_email)
-    //     .send()
-    //     .await;
-    // let response = response_result?;
-
-    // // Check the status code of the response
-    // match response.status() {
-    //     StatusCode::OK => {
-    //         // Read the response body
-    //         let response_body = response.text().await?;
-    //         // Handle the successful response (e.g., print the response body)
-    //         println!("Modal response: {}", response_body);
-    //     }
-    //     StatusCode::BAD_REQUEST => {
-    //         // Handle the bad request error (e.g., print an error message)
-    //         println!("Bad request to Modal");
-    //     }
-    //     _ => {
-    //         // Handle other status codes (e.g., print a generic error message)
-    //         println!("An error occurred on Modal...");
-    //     }
-    // };
-
     Ok(())
     // println!("Response status: {}", response.status());
 }
@@ -97,7 +104,7 @@ pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) {
     println!("Subject, from: {:?} {:?}", subject, from);
 
     // Validate subject, and send rejection/reformatting email if necessary
-    let re = Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc|dai) to (.+@.+(\..+)+)").unwrap();
+    let re = Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc|dai|ETH|USDC|DAI) to (.+@.+(\..+)+)").unwrap();
     let subject_regex = re.clone();
     let mut custom_reply: String = "".to_string();
     if subject_regex.is_match(subject.as_str()) {
@@ -105,16 +112,14 @@ pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) {
             // Extract the amount and recipient from the captures
             let amount = captures.get(1).map_or("", |m| m.as_str());
             let recipient = captures.get(4).map_or("", |m| m.as_str());
-            custom_reply = format!("Valid send initiated. Sending {} TestERC20 to {} on Ethereum. We will follow up with Etherscan link when finished! You are sending with ", amount, recipient);
+            custom_reply = first_reply(amount, recipient);
         } else {
-            custom_reply = "Send seems to match regex but is invalid! Please try again with this subject: \"Send _ eth to __@__.___\"".to_string();
+            custom_reply = invalid_reply("seems to match regex but is invalid");
         }
         println!("Send valid! Validating proof...");
     } else {
         println!("Send invalid! Regex failed...");
-        custom_reply =
-            "Send invalid! Please try again with this subject: \"Send _ eth to __@__.___\""
-                .to_string();
+        custom_reply = invalid_reply("failed regex");
     }
     let confirmation = emailer.reply_all(raw_email, &custom_reply);
 }

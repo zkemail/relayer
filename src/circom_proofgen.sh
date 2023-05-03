@@ -15,9 +15,9 @@ if [ $# -ne 1 ]; then
 fi
 
 nonce=$1
-zk_email_path=$ZK_EMAIL_CIRCOM_PATH
-HOME="${ZK_EMAIL_CIRCOM_PATH}/../"
-wallet_eml_dir_path=$INCOMING_EML_PATH
+zk_email_path="${MODAL_ZK_EMAIL_CIRCOM_PATH}"
+HOME="${MODAL_ZK_EMAIL_CIRCOM_PATH}/../"
+wallet_eml_dir_path=$MODAL_INCOMING_EML_PATH
 prover_output_path="${wallet_eml_dir_path}/../proofs/"
 
 wallet_eml_path="${wallet_eml_dir_path}/wallet_${nonce}.eml"

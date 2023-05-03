@@ -52,7 +52,8 @@ impl<'a> Authenticator for OAuthed {
 
 impl EmailReceiver {
     pub async fn construct(domain_name: &str, port: u16, auth: IMAPAuth) -> Result<Self> {
-        println!("Trying to construct...");
+        let mut retry_count = 0;
+        println!("Creating TLS tunnel...");
         let tls = native_tls::TlsConnector::builder().build()?;
         println!("Beginning connection process to IMAP server...");
         let client = imap::connect((domain_name, port), domain_name, &tls)?;
@@ -103,21 +104,67 @@ impl EmailReceiver {
         Ok(Self { imap_session })
     }
 
-    pub fn wait_new_email(&mut self) -> Result<()> {
-        self.imap_session.idle()?.wait()?;
-        Ok(())
+    pub async fn wait_new_email(&mut self, domain_name: &str, port: u16, auth: &IMAPAuth) -> Result<()> {
+        loop {
+            match self.imap_session.idle() {
+                Ok(mut idle) => match idle.wait() {
+                    Ok(()) => return Ok(()),
+                    Err(ImapError::Io(e)) if e.kind() == ErrorKind::ConnectionReset => {
+                        println!("Connection reset, reconnecting...");
+                        self.reconnect(domain_name, port, auth).await?;
+                    }
+                    Err(e) => return Err(anyhow!("Error during IDLE: {:?}", e)),
+                },
+                Err(ImapError::Io(e)) if e.kind() == ErrorKind::ConnectionReset => {
+                    println!("Connection reset, reconnecting...");
+                    self.reconnect(domain_name, port, auth).await?;
+                }
+                Err(e) => return Err(anyhow!("Error entering IDLE: {:?}", e)),
+            }
+        }
     }
 
-    pub fn retrieve_new_emails(&mut self) -> Result<Vec<ZeroCopy<Vec<Fetch>>>> {
-        let uids = self.imap_session.uid_search("UNSEEN")?;
-        let mut fetches = vec![];
-        for (idx, uid) in uids.into_iter().enumerate() {
-            println!("uid {}", uid);
-            let fetched = self
-                .imap_session
-                .uid_fetch(uid.to_string(), "(BODY[] ENVELOPE)")?;
-            fetches.push(fetched);
+    async fn reconnect(&mut self, domain_name: &str, port: u16, auth: &IMAPAuth) -> Result<()> {
+        let mut retry_count = 0;
+        while retry_count < MAX_RETRIES {
+            match Self::construct(domain_name, port, auth.clone()).await {
+                Ok(new_client) => {
+                    self.imap_session = new_client.imap_session;
+                    return Ok(());
+                }
+                Err(e) => {
+                    println!("Failed to reconnect: {:?}", e);
+                    retry_count += 1;
+                    sleep(RETRY_DELAY).await;
+                }
+            }
         }
-        Ok(fetches)
+        Err(anyhow!(
+            "Failed to reconnect after {} attempts",
+            MAX_RETRIES
+        ))
+    }
+
+    pub async fn retrieve_new_emails(&mut self, domain_name: &str, port: u16, auth: &IMAPAuth) -> Result<Vec<ZeroCopy<Vec<Fetch>>>> {
+        loop {
+            match self.imap_session.uid_search("UNSEEN") {
+                Ok(uids) => {
+                    let mut fetches = vec![];
+                    for (idx, uid) in uids.into_iter().enumerate() {
+                        println!("uid {}", uid);
+                        let fetched = self
+                            .imap_session
+                            .uid_fetch(uid.to_string(), "(BODY[] ENVELOPE)")?;
+                        fetches.push(fetched);
+                    }
+                    return Ok(fetches);
+                }
+                Err(ImapError::Io(e)) if e.kind() == ErrorKind::ConnectionReset => {
+                    println!("Connection reset, reconnecting...");
+                    self.reconnect(domain_name, port, auth).await?;
+                }
+                Err(e) => return Err(anyhow!("Error retrieving new emails: {:?}", e)),
+            }
+        }
     }
 }
