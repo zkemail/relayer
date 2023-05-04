@@ -12,7 +12,12 @@ use std::io;
 use std::net::TcpStream;
 use std::slice::Iter;
 
+// We cache the domain name, port, and auth for reconnection on failure
 #[derive(Debug)]
+pub struct ImapClient {
+    imap_session: Session<TlsStream<TcpStream>>,
+}
+
 pub enum IMAPAuth {
     Password {
         id: String,
@@ -26,12 +31,6 @@ pub enum IMAPAuth {
         token_url: String,
         redirect_url: String,
     },
-}
-
-// We cache the domain name, port, and auth for reconnection on failure
-#[derive(Debug)]
-pub struct EmailReceiver {
-    imap_session: Session<TlsStream<TcpStream>>,
 }
 
 pub struct OAuthed {
@@ -50,7 +49,7 @@ impl<'a> Authenticator for OAuthed {
     }
 }
 
-impl EmailReceiver {
+impl ImapClient {
     pub async fn construct(domain_name: &str, port: u16, auth: IMAPAuth) -> Result<Self> {
         println!("Trying to construct...");
         let tls = native_tls::TlsConnector::builder().build()?;
@@ -75,7 +74,7 @@ impl EmailReceiver {
                 )
                 .set_redirect_uri(RedirectUrl::new(redirect_url)?);
                 let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
-                let (auth_url, csrf_token) = oauth_client
+                let (auth_url, _) = oauth_client
                     .authorize_url(CsrfToken::new_random)
                     // Set the desired scopes.
                     .add_scope(Scope::new("https://mail.google.com/".to_string()))

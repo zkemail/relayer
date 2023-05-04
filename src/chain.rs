@@ -16,7 +16,7 @@ use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
 // use hex;
 use crate::config::{INCOMING_EML_PATH, LOGIN_ID_KEY, LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY};
-use crate::smtp_client::EmailSenderClient;
+use crate::smtp_client::SmtpClient;
 use hex_literal::hex;
 use k256::ecdsa::SigningKey;
 use rand::thread_rng;
@@ -246,7 +246,7 @@ fn reply_with_etherscan(nonce: &str, tx_hash: H256) {
 
 fn reply_with_message(nonce: &str, reply: &str) {
     dotenv().ok();
-    let mut sender: EmailSenderClient = EmailSenderClient::new(
+    let mut sender: SmtpClient = SmtpClient::construct(
         env::var(LOGIN_ID_KEY).unwrap().as_str(),
         env::var(LOGIN_PASSWORD_KEY).unwrap().as_str(),
         Some(env::var(SMTP_DOMAIN_NAME_KEY).unwrap().as_str()),
