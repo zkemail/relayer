@@ -1,3 +1,17 @@
+mod config;
+mod coordinator;
+mod imap_client;
+mod parse_email;
+mod processer;
+mod smtp_client;
+mod strings;
+use anyhow::{anyhow, Result};
+use config::{
+    IMAP_AUTH_TYPE_KEY, IMAP_AUTH_URL_KEY, IMAP_CLIENT_ID_KEY, IMAP_CLIENT_SECRET_KEY,
+    IMAP_DOMAIN_NAME_KEY, IMAP_PORT_KEY, IMAP_REDIRECT_URL_KEY, IMAP_TOKEN_URL_KEY, LOGIN_ID_KEY,
+    LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY, SMTP_PORT_KEY, ZK_EMAIL_PATH_KEY,
+};
+use coordinator::{handle_email, send_to_modal, validate_email};
 use anyhow::{anyhow, Result};
 use dotenv::dotenv;
 use http::StatusCode;
@@ -22,8 +36,8 @@ use std::{
     fs,
     hash::{Hash, Hasher},
 };
+use strings::{first_reply, invalid_reply};
 
-#[cfg(feature = "ether")]
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenv().ok();
@@ -52,7 +66,7 @@ async fn main() -> Result<()> {
 
     let imap_client = ImapClient::construct(&domain_name, port, imap_auth).await?;
     let smtp_client = SmtpClient::construct(
-        env::var(LOGIN_ID_KEY)?.as_str(),
+            env::var(LOGIN_ID_KEY)?.as_str(),
         env::var(LOGIN_PASSWORD_KEY)?.as_str(),
         env::var(SMTP_DOMAIN_NAME_KEY)?.as_str(),
     );
@@ -85,16 +99,12 @@ async fn main() -> Result<()> {
         chain_client,
         env::var(SCAN_URL_PREFIX_KEY)?.as_str(),
     );
+    println!("Email receiver constructed with auto-reconnect.");
     loop {
         println!("waiting new emails...");
         processer.wait_new_email()?;
         println!("new emails are found!");
         processer.fetch_new_emails().await?;
-        println!("emails are processed.");
         // tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-    }
-}
-#[cfg(not(feature = "ether"))]
-fn main() {
-    panic!("ether feature must be enabled!");
+        println!("new email!");
 }

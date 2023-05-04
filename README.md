@@ -37,8 +37,47 @@ echo -e "net.ipv4.tcp_keepalive_time = 45\nnet.ipv4.tcp_keepalive_intvl = 45\nne
 sudo sysctl -p
 ```
 
-## Directory Setup
+## Tests
 
+### Test Chain
+
+Test chain connection to verify that your connection to the chain works and simple tx's will send.
+
+```sh
+cargo run --bin chain
+```
+
+### Test proofgen
+
+To test local proofgen, send `relayer@sendeth.org` an email while relayer is running then run
+
+```sh
+./src/cirom_proofgen.sh
+```
+
+
+## Run
+
+First, run the relayer.
+
+```sh
+cargo run --bin relayer
+```
+
+### Run infra
+
+Then run the prover + infrastructure coordinator.
+
+```sh
+sudo apt install python3-pip awscli
+pip3 install -r requirements.txt
+aws configure
+python3 coordinator.py
+```
+
+## Update the docker file
+
+Note that this dir structure is only needed if you want to regenerate the docker image.
 ```
 -
   - zk-email-verify
@@ -51,42 +90,7 @@ sudo sysctl -p
 
 Note that you'll have to populate the build folder, run `make` in `zk-email-verify/build/email/email_cpp`, and install rapidsnark according to the zk-email-verify README.
 
-### Test Chain
-
-Test chain connection to verify that your connection to the chain works and simple tx's will send.
-
-```sh
-cargo run --bin chain
-```
-
-## Run
-
-First, run the relayer.
-
-```sh
-cargo run --bin relayer
-```
-
-### Test proofgen
-
-To test the proofgen when the relayer is running, send `relayer@sendeth.org` an email then run
-
-```sh
-./src/cirom_proofgen.sh
-```
-
-### Run infra
-
-Then run the prover + infrastructure coordinator.
-
-```sh
-pip3 install -r requirements.txt
-python3 coordinator.py
-```
-
-## Update the docker file
-
-If you want to edit the Dockerfile or compile a new image, move it one folder up (for now) and setup with these commands:
+If you want to edit the Dockerfile or compile a new image, copy it one folder up (for now) and setup with these commands:
 
 Setup:
 

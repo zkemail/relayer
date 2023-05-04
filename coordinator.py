@@ -11,6 +11,20 @@ import requests
 from urllib.parse import urlencode, quote
 from enum import Enum
 
+# Prover type
+
+class Prover(Enum):
+    LOCAL = "local"
+    MODAL_ENDPOINT = "modal_endpoint"
+    MODAL_STUB = "modal_stub"
+
+
+PROVER_TYPE = Prover.MODAL_ENDPOINT
+bucket_name = "relayer-emails"  # Replace with your S3 bucket name
+object_key_template = "emls/wallet_[nonce].txt"  # Replace with the desired object key (name) in S3
+s3_url = "https://" + bucket_name + ".s3.amazonaws.com/" + object_key_template
+
+# ----------------- LOCAL ENV -----------------
 # Define the paths to the AWS config and credentials files
 aws_config_path = os.path.expanduser('~/.aws/config')
 aws_credentials_path = os.path.expanduser('~/.aws/credentials')
@@ -28,18 +42,6 @@ if os.path.isfile(aws_config_path) and os.path.isfile(aws_credentials_path):
     }
 else:
     print("AWS has not been configured. Please run 'aws configure' to set up your AWS credentials.")
-
-
-class Prover(Enum):
-    LOCAL = "local"
-    MODAL_ENDPOINT = "modal_endpoint"
-    MODAL_STUB = "modal_stub"
-
-
-PROVER_TYPE = Prover.MODAL_ENDPOINT
-bucket_name = "relayer-emails"  # Replace with your S3 bucket name
-object_key_template = "emls/wallet_[nonce].txt"  # Replace with the desired object key (name) in S3
-s3_url = "https://" + bucket_name + ".s3.amazonaws.com/" + object_key_template
 
 # ----------- ENV VARIABLES ------------
 
@@ -73,8 +75,8 @@ if os.path.isfile(env_example_path):
 
 # Merge the credentials and aws_credentials dictionaries
 merged_credentials = {**env_credentials, **aws_credentials}
-# --------- AWS HELPER FUNCTIONS ------------
 
+# --------- AWS HELPER FUNCTIONS ------------
 
 def send_to_modal(url, nonce):
     # Path 2: Send to modal
@@ -173,19 +175,10 @@ stub['credentials_secret'] = modal.Secret(merged_credentials)
 @stub.function(cpu=14, memory=6000, secret=stub['credentials_secret'])
 @stub.web_endpoint(method="POST")
 def pull_and_prove_email(aws_url: str, nonce: str):
-    session = boto3.Session()
-    print("Access key id: ", session.get_credentials().access_key)
-
-    print("Moved to dockerfile, will take effect on recompilation: ")
-    subprocess.run(["cp", "/root/relayer/target/x86_64-unknown-linux-gnu/debug/chain", "/root/relayer/target/debug/"], text=True)
-    subprocess.run(["mkdir", "./relayer/proofs"], text=True)
-
     download_and_write_file(aws_url, nonce)
-
     # Print the output of the 'proofgen' command
-    circom_script_path = "/relayer/src/circom_proofgen.sh"
     new_env = os.environ.copy()
-    subprocess.run([circom_script_path, nonce], text=True, env=new_env)
+    subprocess.run(["/relayer/src/circom_proofgen.sh", nonce], text=True, env=new_env)
     return
 
 # --------- LOCAL COORDINATOR ------------
