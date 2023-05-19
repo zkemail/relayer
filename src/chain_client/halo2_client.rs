@@ -25,10 +25,6 @@ impl ChainClient<Halo2SimpleProver> for Halo2Client {
         manipulation_id: usize,
         calldata: <Halo2SimpleProver as EmailProver>::ProofCalldata,
     ) -> Result<H256> {
-        // let gas_price = self.signer.provider().get_gas_price().await?;
-        // let (max_fee_per_gas, _) = self.signer.provider().estimate_eip1559_fees(None).await?;
-        // let provider = self.provider.clone();
-        // let signer = SignerMiddleware::new(self.provider, self.wallet.with_chain_id(self.chain_id));
         let wallet_contract =
             ContractInstance::<_, SignerMiddleware<Provider<Http>, LocalWallet>>::new(
                 self.contract_address,
@@ -74,8 +70,6 @@ impl ChainClient<Halo2SimpleProver> for Halo2Client {
     }
 
     async fn query_balance(&self, email_address: &str, token_name: &str) -> Result<String> {
-        // let provider = self.provider.clone();
-        // let signer = SignerMiddleware::new(self.provider, self.wallet.with_chain_id(self.chain_id));
         let wallet_contract =
             ContractInstance::<_, SignerMiddleware<Provider<Http>, LocalWallet>>::new(
                 self.contract_address,
