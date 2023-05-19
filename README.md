@@ -7,11 +7,9 @@ A permissionless relayer server for an email wallet. It receives emails from use
 The main branch only supports halo2-based prover in [halo2-zk-email](https://github.com/zkemail/halo2-zk-email) and smart contracts implemented with an [email-wallet-contracts](https://github.com/zkemail/email-wallet-contracts) template.
 It was used to build a demo of ["Contract Wallet Using Emails" at ICBC2023](https://speakerdeck.com/sorasuegami/icbc2023-contract-wallet-using-emails).
 
-- feat/model
+- feat/model:
 The feat/model branch supports circom-based prover and smart contracts in [zk-email-verify](https://github.com/zkemail/zk-email-verify).
-The integration with the halo2-based prover is under development.
-
-Goerli Wallet Address (circom-only): 0x3b3857eaf44804cce00449b7fd40310e6de6496e
+The integration with the halo2-based prover is under development. Goerli Wallet Address (circom-only): 0x3b3857eaf44804cce00449b7fd40310e6de6496e
 
 ## Setup
 In a new cloud instance, run:
