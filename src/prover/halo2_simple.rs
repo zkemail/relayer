@@ -1,5 +1,5 @@
 use crate::config::ManipulationDefsJson;
-use crate::config::RegexType;
+use crate::config::SoldityType;
 use crate::prover::EmailProver;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -84,14 +84,14 @@ impl EmailProver for Halo2SimpleProver {
         for (idx, regex_type) in def.types.iter().enumerate() {
             tokens.push(Token::Uint(U256::from(public_input.body_starts[idx])));
             match *regex_type {
-                RegexType::String => {
+                SoldityType::String => {
                     tokens.push(Token::String(public_input.body_substrs[idx].to_string()));
                 }
-                RegexType::Uint => tokens.push(Token::Uint(U256::from_str_radix(
+                SoldityType::Uint => tokens.push(Token::Uint(U256::from_str_radix(
                     public_input.body_substrs[idx].as_str(),
                     10,
                 )?)),
-                RegexType::Decimal => {
+                SoldityType::Decimal => {
                     let int_part = Regex::new(r"[0-9]+(?=\.)")?;
                     let dec_part = Regex::new(r"(?<=\.)[0-9]+")?;
                     let int_found = int_part

@@ -29,7 +29,7 @@ impl<P: EmailProver, C: ChainClient<P>> EmailProcesser<P, C> {
             imap_client,
             smtp_client,
             prover,
-            chain_client, // num_unprocessed_email,
+            chain_client,
             scan_url_prefix: scan_url_prefix.to_string(),
         }
     }

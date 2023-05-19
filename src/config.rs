@@ -1,5 +1,3 @@
-pub const ZK_EMAIL_PATH_KEY: &'static str = "ZK_EMAIL_CIRCOM_PATH";
-
 pub const IMAP_DOMAIN_NAME_KEY: &'static str = "IMAP_DOMAIN_NAME";
 pub const IMAP_PORT_KEY: &'static str = "IMAP_PORT";
 pub const IMAP_AUTH_TYPE_KEY: &'static str = "AUTH_TYPE";
@@ -35,15 +33,8 @@ pub const SCAN_URL_PREFIX_KEY: &'static str = "SCAN_URL_PREFIX";
 
 use std::collections::HashMap;
 
+pub use halo2_zk_email::vrm::SoldityType;
 use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[serde(tag = "type")]
-pub enum RegexType {
-    String,
-    Uint,
-    Decimal,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ManipulationDef {
@@ -53,7 +44,7 @@ pub struct ManipulationDef {
     pub agg_pk_path: String,
     pub max_header_size: usize,
     pub max_body_size: usize,
-    pub types: Vec<RegexType>,
+    pub types: Vec<SoldityType>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

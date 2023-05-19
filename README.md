@@ -1,24 +1,30 @@
 # Relayer
 
-A permissionless Rust Axum webserver relayer service that reads email and responds to it. Uses IMAP to receive email and SMTP to send replies.
+A permissionless relayer server for an email wallet. It receives emails from users with IMAP, generates proofs with ZKP, submits them to an email wallet contract, and replies to the user's email with SMTP. 
+
+## Branch Description
+- main:
+The main branch only supports halo2-based prover in [halo2-zk-email](https://github.com/zkemail/halo2-zk-email) and smart contracts implemented with an [email-wallet-contracts](https://github.com/zkemail/email-wallet-contracts) template.
+It was used to build a demo of ["Contract Wallet Using Emails" at ICBC2023](https://speakerdeck.com/sorasuegami/icbc2023-contract-wallet-using-emails).
+
+- feat/model
+The feat/model branch supports circom-based prover and smart contracts in [zk-email-verify](https://github.com/zkemail/zk-email-verify).
+The integration with the halo2-based prover is under development.
 
 Goerli Wallet Address (circom-only): 0x3b3857eaf44804cce00449b7fd40310e6de6496e
 
 ## Setup
-
 In a new cloud instance, run:
 
 ```
 sudo apt update
-chmod +x src/circom_proofgen.sh
-chmod +x ../rapidsnark/build/prover
 sudo apt-get install -y pkg-config libssl-dev build-essential nginx certbot python3-certbot-nginx
 curl https://sh.rustup.rs -sSf | sh
 cargo build --release
 ip -4 -o addr show scope global | awk '{print $4}' && ip -6 -o addr show scope global | awk '{print $4}' # Point the DNS to these raw IPs
 ```
 
-## Enable TLS/TCP Keepalive
+### Enable TLS/TCP Keepalive
 
 From [here](https://aws.amazon.com/blogs/networking-and-content-delivery/implementing-long-running-tcp-connections-within-vpc-networking/), or else your IMAP connection will drop every 6ish idle minutes.
 ```
@@ -26,130 +32,6 @@ echo -e "net.ipv4.tcp_keepalive_time = 45\nnet.ipv4.tcp_keepalive_intvl = 45\nne
 sudo sysctl -p
 ```
 
-## Directory Setup
-
-```
--
-  - zk-email-verify
-    - ...
-  - relayer
-    - ...
-  - rapidsnark
-    - ...
-```
-
-Note that you'll have to populate the build folder, run `make` in `zk-email-verify/build/email/email_cpp`, and install rapidsnark according to the zk-email-verify README.
-
-### Test Chain
-
-Test chain connection to verify that your connection to the chain works and simple tx's will send.
-
-```
-cargo run --bin chain
-```
-
-## Run
-
-First, run the relayer.
-
-```
-cargo run --bin relayer
-```
-
-### Test proofgen
-
-To test the proofgen when the relayer is running, send `relayer@sendeth.org` an email then run
-
-```
-./src/cirom_proofgen.sh
-```
-
-### Run infra
-
-Then run the prover + infrastructure coordinator.
-
-```
-pip3 install --r requirements.txt
-python3 coordinator.py
-```
-
-## Server Setup
-
-We don't use this server anymore, but if you'd like to call these functions via endpoints, you can use this nginx setup.
-
-### Turn on nginx
-
-````
-Configure Nginx: Create a new Nginx configuration file for your application:
-
-```bash
-sudo nano /etc/nginx/sites-available/sendeth
-````
-
-Paste the following configuration and adjust the domain name and paths accordingly:
-
-```
-server {
-        listen 80;
-        server_name sendeth.org www.sendeth.org;
-        return 301 https://$host$request_uri;
-}
-
-server {
-        listen 443 ssl;
-        server_name sendeth.org www.sendeth.org;
-
-        ssl_certificate /etc/letsencrypt/live/sendeth.org/fullchain.pem;
-        ssl_certificate_key /etc/letsencrypt/live/sendeth.org/privkey.pem;
-    ssl_protocols TLSv1.3 TLSv1.2;
-    ssl_prefer_server_ciphers on;
-    ssl_dhparam /etc/nginx/dhparam.pem;
-        ssl_ciphers 'TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GS256-GCM-SHA384:EECDH+AESGCM:EDH+AESGCM'
-
-        location / {
-                proxy_pass http://localhost:3000;
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                proxy_set_header X-Forwarded-Proto $scheme;
-        }
-}
-```
-
-We rely on gmail for IMAP, but if you want your own server, you can add thiss:
-
-```
-mail {
-    server_name sendeth.com;
-
-    imap_capabilities "IMAP4rev1" "UIDPLUS";
-
-    server {
-        listen 143;
-        protocol imap;
-    }
-
-    server {
-        listen 993 ssl;
-        protocol imap;
-        ssl_certificate /etc/letsencrypt/live/sendeth.com/fullchain.pem;
-        ssl_certificate_key /etc/letsencrypt/live/sendeth.com/privkey.pem;
-    }
-}
-```
-
-Save and exit the file. Create a symbolic link to enable the site:
-
-```bash
-sudo ln -s /etc/nginx/sites-available/sendeth /etc/nginx/sites-enabled/
-```
-
-Test the Nginx configuration and restart Nginx:
-
-```
-export YOURDOMAIN=sendeth.org
-sudo certbot --nginx -d $YOURDOMAIN -d www.$YOURDOMAIN
-```
 
 ### Enable IMAP in Gmail
 
@@ -223,3 +105,83 @@ sudo ufw allow 3000
 ```
 
 Then run the certbot command again.
+
+
+## Run
+```
+cargo run --release
+```
+
+### Turn on nginx
+
+````
+Configure Nginx: Create a new Nginx configuration file for your application:
+
+```bash
+sudo nano /etc/nginx/sites-available/sendeth
+````
+
+Paste the following configuration and adjust the domain name and paths accordingly:
+
+```
+server {
+        listen 80;
+        server_name sendeth.org www.sendeth.org;
+        return 301 https://$host$request_uri;
+}
+
+server {
+        listen 443 ssl;
+        server_name sendeth.org www.sendeth.org;
+
+        ssl_certificate /etc/letsencrypt/live/sendeth.org/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/sendeth.org/privkey.pem;
+    ssl_protocols TLSv1.3 TLSv1.2;
+    ssl_prefer_server_ciphers on;
+    ssl_dhparam /etc/nginx/dhparam.pem;
+        ssl_ciphers 'TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GS256-GCM-SHA384:EECDH+AESGCM:EDH+AESGCM'
+
+        location / {
+                proxy_pass http://localhost:3000;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+        }
+}
+```
+
+We rely on gmail for IMAP, but if you want your own server, you can add this:
+
+```
+mail {
+    server_name sendeth.com;
+
+    imap_capabilities "IMAP4rev1" "UIDPLUS";
+
+    server {
+        listen 143;
+        protocol imap;
+    }
+
+    server {
+        listen 993 ssl;
+        protocol imap;
+        ssl_certificate /etc/letsencrypt/live/sendeth.com/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/sendeth.com/privkey.pem;
+    }
+}
+```
+
+Save and exit the file. Create a symbolic link to enable the site:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/sendeth /etc/nginx/sites-enabled/
+```
+
+Test the Nginx configuration and restart Nginx:
+
+```
+export YOURDOMAIN=sendeth.org
+sudo certbot --nginx -d $YOURDOMAIN -d www.$YOURDOMAIN
+```
