@@ -22,15 +22,6 @@ cargo build --release
 ip -4 -o addr show scope global | awk '{print $4}' && ip -6 -o addr show scope global | awk '{print $4}' # Point the DNS to these raw IPs
 ```
 
-### Enable TLS/TCP Keepalive
-
-From [here](https://aws.amazon.com/blogs/networking-and-content-delivery/implementing-long-running-tcp-connections-within-vpc-networking/), or else your IMAP connection will drop every 6ish idle minutes.
-```
-echo -e "net.ipv4.tcp_keepalive_time = 45\nnet.ipv4.tcp_keepalive_intvl = 45\nnet.ipv4.tcp_keepalive_probes = 9" | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
-```
-
-
 ### Enable IMAP in Gmail
 
 Here's how to enable IMAP access and use App Passwords for your Gmail or Google Workspace account:
@@ -110,7 +101,11 @@ Then run the certbot command again.
 cargo run --release
 ```
 
-### Turn on nginx
+## Deprecated
+
+### Turn on nginx 
+
+Note that this section is no longer needed, with the addition of the IMAP server direct connection.
 
 ````
 Configure Nginx: Create a new Nginx configuration file for your application:
@@ -182,4 +177,13 @@ Test the Nginx configuration and restart Nginx:
 ```
 export YOURDOMAIN=sendeth.org
 sudo certbot --nginx -d $YOURDOMAIN -d www.$YOURDOMAIN
+```
+
+
+### Enable TLS/TCP Keepalive (Did not work)
+
+From [here](https://aws.amazon.com/blogs/networking-and-content-delivery/implementing-long-running-tcp-connections-within-vpc-networking/), or else your IMAP connection will drop every 6ish idle minutes.
+```
+echo -e "net.ipv4.tcp_keepalive_time = 45\nnet.ipv4.tcp_keepalive_intvl = 45\nnet.ipv4.tcp_keepalive_probes = 9" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
 ```
