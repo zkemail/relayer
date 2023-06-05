@@ -237,7 +237,7 @@ pub async fn send_to_chain(
 fn reply_with_etherscan(nonce: &str, tx_hash: H256) {
     let etherscan_url = format!("https://goerli.etherscan.io/tx/0x{:x}", tx_hash);
     let reply = format!(
-        "Transaction sent! View Etherscan confirmation: {}.",
+        "Transaction sent! View Etherscan confirmation: {}. Spot the transfer of the ERC20 for the amount you specified.",
         etherscan_url
     );
     println!("Replying with confirmation...{}", reply);

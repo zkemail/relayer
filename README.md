@@ -28,6 +28,8 @@ chmod +x ../rapidsnark/build/prover
 ip -4 -o addr show scope global | awk '{print $4}' && ip -6 -o addr show scope global | awk '{print $4}' # Point the DNS to these raw IPs
 ```
 
+And make sure that the abi in ` abi/wallet.abi` is up to date.
+
 ## Enable TLS/TCP Keepalive
 
 From [here](https://aws.amazon.com/blogs/networking-and-content-delivery/implementing-long-running-tcp-connections-within-vpc-networking/), or else your IMAP connection will drop every 6ish idle minutes. Edit: Apparenly this is not enough.
