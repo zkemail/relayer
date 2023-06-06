@@ -93,27 +93,44 @@ pub async fn handle_email(raw_email: String, zk_email_circom_dir: &String) -> Re
 pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) {
     let mut subject = extract_subject(&raw_email).unwrap();
     let mut from = extract_from(&raw_email).unwrap();
-    println!("Subject, from: {:?} {:?}", subject, from);
+    let mut message_id = extract_message_id(&raw_email).unwrap();
+    println!(
+        "Subject, from, message id: {:?} {:?} {:?}",
+        subject, from, message_id
+    );
 
     // Validate subject, and send rejection/reformatting email if necessary
-    let re =
-        Regex::new(r"[Ss]end ?\$?(\d+(\.\d{1,2})?) (eth|usdc|dai|ETH|USDC|DAI) to (.+@.+(\..+)+)")
-            .unwrap();
+    let re = Regex::new(
+        r"([Ss]end|[Tt]ransfer) ?\$?(\d+(\.\d+)?) (eth|usdc|dai|ETH|USDC|DAI) to (.+@.+(\..+)+)",
+    )
+    .unwrap();
     let subject_regex = re.clone();
     let mut custom_reply: String = "".to_string();
+    let mut valid: bool = false;
     if subject_regex.is_match(subject.as_str()) {
         if let Some(captures) = re.captures(subject.as_str()) {
             // Extract the amount and recipient from the captures
             let amount = captures.get(1).map_or("", |m| m.as_str());
+            let currency = captures.get(2).map_or("", |m| m.as_str());
             let recipient = captures.get(4).map_or("", |m| m.as_str());
+            println!(
+                "Amount: {}, Recipient: {}, Currency: {}",
+                amount, recipient, currency
+            );
             custom_reply = first_reply(amount, recipient);
+            valid = true;
         } else {
             custom_reply = invalid_reply("seems to match regex but is invalid");
+            valid = false;
         }
+    } else {
+        custom_reply = invalid_reply("failed regex");
+        valid = false;
+    }
+    if (valid) {
         println!("Send valid! Validating proof...");
     } else {
         println!("Send invalid! Regex failed...");
-        custom_reply = invalid_reply("failed regex");
     }
     let confirmation = emailer.reply_all(raw_email, &custom_reply);
 }

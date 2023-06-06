@@ -116,6 +116,23 @@ pub fn extract_subject(email: &str) -> Result<String, Box<dyn Error>> {
     Err("Could not find subject".into())
 }
 
+pub fn extract_message_id(email: &str) -> Result<String, Box<dyn Error>> {
+    if let Some(message_id_start) = email.find("Message-ID:") {
+        let message_id_line_start = &email[message_id_start..];
+        if let Some(message_id_end) = message_id_line_start.find("\r\n") {
+            let message_id_line = &message_id_line_start[..message_id_end];
+            let email_start = message_id_line.find('<');
+            let email_end = message_id_line.find('>');
+            if let (Some(start), Some(end)) = (email_start, email_end) {
+                let message_id = &message_id_line[start + 1..end];
+                println!("message_id value: {}", message_id);
+                return Ok(message_id.to_string());
+            }
+        }
+    }
+    Err("Could not find message_id value".into())
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

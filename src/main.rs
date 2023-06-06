@@ -6,6 +6,7 @@ mod parse_email;
 mod processer;
 mod smtp_client;
 mod strings;
+use sled;
 use anyhow::{anyhow, Result};
 use config::{
     IMAP_AUTH_TYPE_KEY, IMAP_AUTH_URL_KEY, IMAP_CLIENT_ID_KEY, IMAP_CLIENT_SECRET_KEY,
