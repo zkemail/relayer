@@ -107,4 +107,5 @@ async fn main() -> Result<()> {
         processer.fetch_new_emails().await?;
         // tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
         println!("new email!");
+    }
 }

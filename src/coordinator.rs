@@ -1,19 +1,11 @@
 use crate::config::{
     IMAP_AUTH_TYPE_KEY, IMAP_AUTH_URL_KEY, IMAP_CLIENT_ID_KEY, IMAP_CLIENT_SECRET_KEY,
     IMAP_DOMAIN_NAME_KEY, IMAP_PORT_KEY, IMAP_REDIRECT_URL_KEY, IMAP_TOKEN_URL_KEY, LOGIN_ID_KEY,
-<<<<<<< HEAD
     LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY, ZK_EMAIL_PATH_KEY,
 };
 use crate::imap_client::{IMAPAuth, ImapClient};
 use crate::parse_email::*;
 use crate::smtp_client::SmtpClient;
-=======
-    LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY, SMTP_PORT_KEY, ZK_EMAIL_PATH_KEY,
-};
-use crate::imap_client::{EmailReceiver, IMAPAuth};
-use crate::parse_email::*;
-use crate::smtp_client::EmailSenderClient;
->>>>>>> feat/modal
 use crate::strings::{first_reply, invalid_reply};
 use anyhow::{anyhow, Result};
 use dotenv::dotenv;
@@ -80,18 +72,13 @@ pub async fn send_to_modal(raw_email: String, hash: u64) -> Result<()> {
     Ok(())
 }
 
-<<<<<<< HEAD
 pub async fn handle_email(raw_email: String) -> Result<()> {
-=======
-pub async fn handle_email(raw_email: String, zk_email_circom_dir: &String) -> Result<()> {
->>>>>>> feat/modal
     // Path 1: Write raw_email to ../wallet_{hash}.eml
     let hash = {
         let mut hasher = DefaultHasher::new();
         raw_email.hash(&mut hasher);
         hasher.finish()
     };
-
     let file_path = format!("{}/wallet_{}.eml", "./received_eml", hash);
     match fs::write(file_path.clone(), raw_email.clone()) {
         Ok(_) => println!("Email data written successfully to {}", file_path),
@@ -102,7 +89,6 @@ pub async fn handle_email(raw_email: String, zk_email_circom_dir: &String) -> Re
     // println!("Response status: {}", response.status());
 }
 
-<<<<<<< HEAD
 pub async fn validate_email(raw_email: &str, emailer: Option<&SmtpClient>) {
     let mut sender: SmtpClient;
     if emailer.is_none() {
@@ -114,9 +100,6 @@ pub async fn validate_email(raw_email: &str, emailer: Option<&SmtpClient>) {
     } else {
         sender = emailer.unwrap().clone();
     }
-=======
-pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) {
->>>>>>> feat/modal
     let mut subject = extract_subject(&raw_email).unwrap();
     let mut from = extract_from(&raw_email).unwrap();
     println!("Subject, from: {:?} {:?}", subject, from);
@@ -141,9 +124,5 @@ pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) {
         println!("Send invalid! Regex failed...");
         custom_reply = invalid_reply("failed regex");
     }
-<<<<<<< HEAD
     let confirmation = sender.reply_all(raw_email, &custom_reply);
-=======
-    let confirmation = emailer.reply_all(raw_email, &custom_reply);
->>>>>>> feat/modal
 }

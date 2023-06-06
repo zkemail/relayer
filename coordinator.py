@@ -13,6 +13,7 @@ from enum import Enum
 
 # Prover type
 
+
 class Prover(Enum):
     LOCAL = "local"
     MODAL_ENDPOINT = "modal_endpoint"
@@ -77,6 +78,7 @@ if os.path.isfile(env_example_path):
 merged_credentials = {**env_credentials, **aws_credentials}
 
 # --------- AWS HELPER FUNCTIONS ------------
+
 
 def send_to_modal(url, nonce):
     # Path 2: Send to modal
@@ -153,7 +155,7 @@ image = modal.Image.from_dockerhub(
 stub = modal.Stub(image=image)
 
 
-@stub.function(cpu=4, image=image)
+@stub.function(cpu=12, image=image)
 def prove_email(file_contents: str, nonce: str):
     # Write the file_contents to the file named after the nonce
     file_name = f"/root/relayer/received_eml/wallet_{nonce}.eml"
