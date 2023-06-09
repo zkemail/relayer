@@ -1,4 +1,4 @@
-pub const CHAIN: String = "Ethereum Goerli".to_string();
+pub const CHAIN: &str = "Ethereum Goerli";
 
 pub fn first_reply(amount: &str, currency: &str, recipient: &str) -> String {
     format!(

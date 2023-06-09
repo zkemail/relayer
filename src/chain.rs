@@ -7,6 +7,7 @@ use dotenv::dotenv;
 use ethers::abi::Abi;
 // use ethers::contract::ContractError;
 use ethers::prelude::*;
+use anyhow::{Error};
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
 // use hex;
@@ -18,7 +19,7 @@ use k256::ecdsa::SigningKey;
 use serde_json::Value;
 use std::convert::TryFrom;
 use std::env;
-use std::error::Error;
+// use std::error::Error;
 use std::fs;
 // use std::borrow::Borrow;
 use std::str::{self, FromStr};
@@ -26,7 +27,7 @@ use std::str::{self, FromStr};
 // use std::sync::Arc;
 
 #[derive(Debug, Clone)]
-struct CircomCalldata {
+pub struct CircomCalldata {
     pi_a: [U256; 2],
     pi_b: [[U256; 2]; 2],
     pi_c: [U256; 2],
@@ -34,7 +35,7 @@ struct CircomCalldata {
 }
 
 // Define a new function that takes optional arguments and provides default values
-pub fn get_calldata(dir: Option<&str>, nonce: Option<&str>) -> Result<CircomCalldata, Box<dyn Error>> {
+pub fn get_calldata(dir: Option<&str>, nonce: Option<&str>) -> Result<CircomCalldata, Error> {
     // Provide default values if arguments are not specified
     let dir = dir.unwrap_or("");
     let nonce = nonce.unwrap_or("");
@@ -48,7 +49,7 @@ pub fn get_calldata(dir: Option<&str>, nonce: Option<&str>) -> Result<CircomCall
 fn parse_files_into_calldata(
     dir: &str,
     nonce: &str,
-) -> Result<CircomCalldata, Box<dyn std::error::Error>> {
+) -> Result<CircomCalldata, Error> {
     let proof_dir = dir.to_owned() + "rapidsnark_proof_" + nonce + ".json";
     let proof_json: Value = serde_json::from_str(&fs::read_to_string(proof_dir).unwrap()).unwrap();
     let public_json: Value = serde_json::from_str(
@@ -108,7 +109,7 @@ pub enum AbiType {
     TokenRegistry,
 }
 
-pub async fn get_provider(test: bool) -> Result<Provider<Http>, Box<dyn Error>> {
+pub async fn get_provider(test: bool) -> Result<Provider<Http>, Error> {
     // let alchemy_api_key = std::env::var("ALCHEMY_GOERLI_KEY").unwrap();
     // println!("alchemy_api_key: {}", alchemy_api_key);
     let rpcurl = if test {
@@ -123,13 +124,13 @@ pub async fn get_provider(test: bool) -> Result<Provider<Http>, Box<dyn Error>> 
     Ok(provider)
 }
 
-pub async fn get_gas_price(test: bool) -> Result<U256, Box<dyn Error>> {
+pub async fn get_gas_price(test: bool) -> Result<U256, Error> {
     let provider = (get_provider(test).await).unwrap();
     let gas_price = provider.get_gas_price().await?;
     Ok(gas_price)
 }
 
-pub fn get_abi(abi_type: AbiType) -> Result<Abi, Box<dyn Error>> {
+pub fn get_abi(abi_type: AbiType) -> Result<Abi, Error> {
     // Read the contents of the ABI file as bytes
     let abi_bytes: &[u8] = match abi_type {
         AbiType::Wallet => include_bytes!("../abi/wallet.abi"),
@@ -145,7 +146,7 @@ pub fn get_abi(abi_type: AbiType) -> Result<Abi, Box<dyn Error>> {
     Ok(abi)
 }
 
-pub async fn get_signer(test: bool) -> Result<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>, Box<dyn Error>> {
+pub async fn get_signer(test: bool) -> Result<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>, Error> {
     let chain_id: u64 = std::env::var("CHAIN_ID")
         .expect("The CHAIN_ID environment variable must be set")
         .parse()?;
@@ -166,7 +167,7 @@ pub async fn send_to_chain(
     test: bool,
     dir: &str,
     nonce: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     // Load environment variables from the .env file
     dotenv().ok();
     let contract_address: Address = std::env::var("CONTRACT_ADDRESS").unwrap().parse()?;
@@ -238,7 +239,7 @@ pub async fn get_token_balance(
     test: bool,
     user_address: &str,
     token_name: &str,
-) -> Result<U256, Box<dyn Error>> {
+) -> Result<U256, Error> {
     // Load environment variables from the .env file
     dotenv().ok();
     let logic_contract_address: Address = std::env::var("CONTRACT_ADDRESS").unwrap().parse()?;

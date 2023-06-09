@@ -7,6 +7,7 @@ pub mod smtp_client;
 pub mod strings;
 pub mod chain;
 use anyhow::{anyhow, Result};
+use ethers_core::types::U256;
 use core::future::Future;
 use chain::get_token_balance;
 use coordinator::{calculate_address, BalanceRequest};
@@ -106,13 +107,14 @@ async fn main() -> Result<()> {
                                         amount,
                                         token_name,
                                     } = balance_request.unwrap();
-                                    
                                     let validation_future = tokio::task::spawn(async move {
                                         loop {
                                             let valid = match get_token_balance(false, address.as_str(), token_name.as_str()).await {
                                                 Ok(balance) => {
+                                                    let cloned_amount = amount.clone();
                                                     println!("balance: {}", balance);
-                                                    balance >= amount.as_str().into()
+                                                    let amount_u256 = U256::from_dec_str(&cloned_amount).unwrap_or_else(|_| U256::zero());
+                                                    balance >= amount_u256
                                                 },
                                                 Err(error) => {
                                                     println!("error: {}", error);
@@ -122,7 +124,7 @@ async fn main() -> Result<()> {
                                             if valid {
                                                 break;
                                             }
-                                            tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+                                            tokio::time::sleep( tokio::time::Duration::from_millis(1000)).await;
                                         }
                                     });
                                     match validation_future.await {

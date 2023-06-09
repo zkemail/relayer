@@ -45,9 +45,9 @@ struct EmailEvent {
 }
 
 pub struct BalanceRequest {
-    address: String,
-    amount: String,
-    token_name: String
+    pub address: String,
+    pub amount: String,
+    pub token_name: String
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]
