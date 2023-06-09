@@ -6,7 +6,7 @@ publish = false
 
 [[bin]]
 name = "chain"
-path = "src/chain.rs"
+path = "src/send_to_chain.rs"
 
 [dependencies]
 # axum = { version = "0.6.12", features = ["multipart"] }
@@ -49,4 +49,12 @@ hex = "0.4.3"
 hex-literal = "0.4.1"
 lettre = "0.10.4"
 sled = "0.34.7"
+# arkworks-mimc = { version = "0.3.0", features = ["mimc-5-220-bn254"] }
+ark-ff = { version = "^0.3.0", default-features = false }
+ark-ec = { version = "^0.3.0", default-features = false }
+ark-ed-on-bn254 = { version = "^0.3.0", default-features = false, features = ["r1cs"] }
+ark-bn254 = { version = "^0.3.0", default-features = false, features = ["curve"] }
+ark-std = { version = "^0.3.0", default-features = false }
+arkworks-mimc = { version = "^0.2.0", default-features = false, features = ["r1cs", "mimc-5-220-bn254"] }
+rustc-hex = "2.1.0"
 # mailparse = "0.14.0"

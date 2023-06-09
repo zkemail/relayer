@@ -1,19 +1,19 @@
-// mod chain;
-mod config;
-mod coordinator;
-mod imap_client;
-mod parse_email;
-mod processer;
-mod smtp_client;
-mod strings;
-use sled;
+pub mod chain;
+pub mod config;
+pub mod coordinator;
+pub mod imap_client;
+pub mod parse_email;
+pub mod processer;
+pub mod smtp_client;
+pub mod strings;
 use anyhow::{anyhow, Result};
+use coordinator::calculate_address;
 use config::{
     IMAP_AUTH_TYPE_KEY, IMAP_AUTH_URL_KEY, IMAP_CLIENT_ID_KEY, IMAP_CLIENT_SECRET_KEY,
     IMAP_DOMAIN_NAME_KEY, IMAP_PORT_KEY, IMAP_REDIRECT_URL_KEY, IMAP_TOKEN_URL_KEY, LOGIN_ID_KEY,
     LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY, SMTP_PORT_KEY, ZK_EMAIL_PATH_KEY,
 };
-use coordinator::{handle_email, send_to_modal, validate_email};
+use coordinator::{handle_email, send_to_modal, ValidationStatus, validate_email};
 use dotenv::dotenv;
 use http::StatusCode;
 use imap_client::{EmailReceiver, IMAPAuth};
@@ -89,7 +89,25 @@ async fn main() -> Result<()> {
                 if let Some(b) = fetch.body() {
                     let body = String::from_utf8(b.to_vec())?;
                     println!("body: {}", body);
-                    validate_email(&body.as_str(), &sender).await;
+                    let validation: Result<(ValidationStatus, Option<String>, Option<String>, Option<String>)> = validate_email(&body.as_str(), &sender).await;
+                    match validation {
+                        Ok((validation_status, salt_sender, salt_receiver, sender_address)) => {
+                            // Handle the successful case here
+                            tokio::spawn(async move {
+                                loop {
+                                    let balance = chain::get_token_balance(false, sender_address.unwrap().as_str(), currency).await.unwrap();
+                                    if let Ok(_) = balance {
+                                        break;
+                                    }
+                                }
+                            });
+                        }
+                        Err(error) => {
+                            // Handle the error case here
+                        }
+                    }
+                    
+
                     handle_email(body, &zk_email_circom_path).await;
                 } else {
                     println!("no body");

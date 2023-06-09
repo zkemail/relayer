@@ -2,11 +2,6 @@ use ethers_core::types::{Address, U256};
 // use ethers_core::utils::CompiledContract;
 // use ethers_providers::{Http, Middleware, Provider};
 // use ethers_signers::{LocalWallet, Signer};
-mod config;
-mod imap_client;
-mod parse_email;
-mod processer;
-mod smtp_client;
 
 use dotenv::dotenv;
 use ethers::abi::Abi;
@@ -25,7 +20,9 @@ use std::convert::TryFrom;
 use std::env;
 use std::error::Error;
 use std::fs;
+use std::borrow::Borrow;
 use std::str::{self, FromStr};
+use rustc_hex::{FromHex, ToHex};
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -34,56 +31,6 @@ struct CircomCalldata {
     pi_b: [[U256; 2]; 2],
     pi_c: [U256; 2],
     signals: [U256; 34],
-}
-
-// Call like: cargo run --bin chain -- <proof_outputs_dir> <nonce>
-// Define a new function that takes optional arguments and provides default values
-// Running with test=true overrides the RPC URL to default to localhost no matter what
-// TODO: replace test=true with rpc url instead
-async fn run(test: bool, dir: &str, nonce: &str) -> Result<(), Box<dyn Error>> {
-    // Call the main function with the specified or default values
-    let calldata = get_calldata(Some(dir), Some(nonce)).unwrap();
-    println!("Calldata: {:?}", calldata);
-
-    // Call the main function with the specified or default values
-    match send_to_chain(test, dir, nonce).await {
-        Ok(_) => {
-            println!("Successfully sent to chain.");
-        }
-        Err(err) => {
-            eprintln!("Error sending to chain: {}", err);
-        }
-    };
-    Ok(())
-}
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    let args: Vec<String> = env::args().collect();
-
-    // Provide default values if arguments are not specified
-    let dir = args.get(1).map_or("", String::as_str);
-    let nonce = args.get(2).map_or("", String::as_str);
-
-    // Call the run function with the specified or default values
-    run(false, dir, nonce).await
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_run_with_defaults() {
-        let dir = "";
-        let nonce = "17689783363368087877";
-
-        println!("Make sure anvil is running on localhost:8548.");
-
-        // Call the run function with default values in the test
-        let result = run(true, dir, nonce).await;
-        assert!(result.is_ok());
-    }
 }
 
 // Define a new function that takes optional arguments and provides default values
@@ -155,6 +102,64 @@ fn parse_files_into_calldata(
     Ok(calldata)
 }
 
+pub enum AbiType {
+    Wallet,
+    ERC20,
+    TokenRegistry,
+}
+
+pub async fn get_provider(test: bool) -> Result<Provider<Http>, Box<dyn Error>> {
+    // let alchemy_api_key = std::env::var("ALCHEMY_GOERLI_KEY").unwrap();
+    // println!("alchemy_api_key: {}", alchemy_api_key);
+    let rpcurl = if test {
+        "http://localhost:8548".to_string()
+    } else {
+        std::env::var("RPC_URL").expect("The RPC_URL environment variable must be set")
+    };
+    // Get the private key from the environment variable
+    println!("rpcurl: {}", rpcurl);
+    
+    let provider = Provider::<Http>::try_from(rpcurl)?;
+    Ok(provider)
+}
+
+pub async fn get_gas_price(test: bool) -> Result<U256, Box<dyn Error>> {
+    let provider = (get_provider(test).await).unwrap();
+    let gas_price = provider.get_gas_price().await?;
+    Ok(gas_price)
+}
+
+pub fn get_abi(abi_type: AbiType) -> Result<Abi, Box<dyn Error>> {
+    // Read the contents of the ABI file as bytes
+    let abi_bytes: &[u8] = match abi_type {
+        AbiType::Wallet => include_bytes!("../abi/wallet.abi"),
+        AbiType::TokenRegistry => include_bytes!("../abi/tokenRegistry.abi"),
+        AbiType::ERC20 => include_bytes!("../abi/erc20.abi"),
+    };
+    // Convert the bytes to a string
+    let abi_str = str::from_utf8(abi_bytes)?;
+    // Parse the string as JSON to obtain the ABI
+    let abi_json: Value = serde_json::from_str(abi_str)?;
+    // Convert the JSON value to the Abi type
+    let abi: Abi = serde_json::from_value(abi_json)?;
+    Ok(abi)
+}
+
+pub async fn get_signer(test: bool) -> Result<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>, Box<dyn Error>> {
+    let chain_id: u64 = std::env::var("CHAIN_ID")
+        .expect("The CHAIN_ID environment variable must be set")
+        .parse()?;
+    let provider = (get_provider(test).await).unwrap();
+    let private_key_hex =
+        std::env::var("PRIVATE_KEY").expect("The PRIVATE_KEY environment variable must be set");
+    let wallet: LocalWallet = LocalWallet::from_str(&private_key_hex)?;
+    println!("Wallet address: {}", wallet.address());
+    println!("Provider: {:?}", provider);
+    // TODO: Hardcoded chain id
+    let signer = SignerMiddleware::new(provider, wallet.with_chain_id(chain_id));
+    Ok(signer)
+}
+
 // local: bool - whether or not to send to a local RPC
 // dir: data directory where the intermediate rapidsnark inputs/proofs will be stored
 pub async fn send_to_chain(
@@ -164,44 +169,12 @@ pub async fn send_to_chain(
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Load environment variables from the .env file
     dotenv().ok();
-
-    let alchemy_api_key = std::env::var("ALCHEMY_GOERLI_KEY").unwrap();
     let contract_address: Address = std::env::var("CONTRACT_ADDRESS").unwrap().parse()?;
-
-    // Get the private key from the environment variable
-    println!("alchemy_api_key: {}", alchemy_api_key);
-    let private_key_hex =
-        std::env::var("PRIVATE_KEY").expect("The PRIVATE_KEY environment variable must be set");
-    let rpcurl = if test {
-        "http://localhost:8548".to_string()
-    } else {
-        std::env::var("RPC_URL").expect("The RPC_URL environment variable must be set")
-    };
-    println!("rpcurl: {}", rpcurl);
-
-    let provider = Provider::<Http>::try_from(rpcurl)?;
-    let wallet = LocalWallet::from_str(&private_key_hex)?;
-
-    println!("Wallet address: {}", wallet.address());
+    let contract = ContractInstance::new(contract_address, get_abi(AbiType::Wallet).unwrap(), get_signer(test).await.unwrap());
+    let gas_price = get_gas_price(test).await.unwrap();
 
     // Read proof and public parameters from JSON files
     let calldata = get_calldata(Some(dir), Some(nonce)).unwrap();
-
-    // Read the contents of the ABI file as bytes
-    let abi_bytes = include_bytes!("../abi/wallet.abi");
-    // Convert the bytes to a string
-    let abi_str = str::from_utf8(abi_bytes)?;
-    // Parse the string as JSON to obtain the ABI
-    let abi_json: Value = serde_json::from_str(abi_str)?;
-    // Convert the JSON value to the Abi type
-    let abi: Abi = serde_json::from_value(abi_json)?;
-
-    println!("Provider: {:?}", provider);
-    // TODO: Hardcoded chain id
-    let chain_id: u64 = 5;
-    let gas_price = provider.get_gas_price().await?;
-    let signer = SignerMiddleware::new(provider, wallet.with_chain_id(chain_id));
-    let contract = ContractInstance::new(contract_address, abi, signer);
 
     println!("Sending transaction with gas price {:?}...", gas_price);
 
@@ -257,3 +230,32 @@ fn reply_with_message(nonce: &str, reply: &str) {
     let raw_email = fs::read_to_string(format!("{}/wallet_{}.eml", eml_var, nonce)).unwrap();
     let confirmation = sender.reply_all(&raw_email, &reply);
 }
+
+ 
+// Given an address and token, get the balance of that token for that address from the chain
+// This can be done on a local light node or fork to ensure future tx data is not leaked
+pub async fn get_token_balance(
+    test: bool,
+    user_address: &str,
+    token_name: &str,
+) -> Result<U256, Box<dyn std::error::Error>> {
+    // Load environment variables from the .env file
+    dotenv().ok();
+    let logic_contract_address: Address = std::env::var("CONTRACT_ADDRESS").unwrap().parse()?;
+    let logic_contract = ContractInstance::new(logic_contract_address, get_abi(AbiType::Wallet).unwrap(), get_signer(test).await.unwrap());
+    let token_registry_address = Address::from_str(logic_contract.method::<_, String>("tokenRegistry", ())?.call().await?.as_str())?;
+    let token_registry_contract = ContractInstance::new(token_registry_address, get_abi(AbiType::TokenRegistry).unwrap(), get_signer(test).await.unwrap());
+    let erc20_address = token_registry_contract.method::<_, Address>("getContractAddress", token_name.to_string())?.call().await?;
+    let erc_contract = ContractInstance::new(erc20_address, get_abi(AbiType::ERC20).unwrap(), get_signer(test).await.unwrap());
+
+    // Call the balanceOf function on the ERC20 contract
+    let balance: U256 = erc_contract
+        .method::<_, U256>("balanceOf", U256::from_str(user_address)?)
+        .unwrap()
+        .call()
+        .await?;
+
+    Ok(balance)
+}
+
+
