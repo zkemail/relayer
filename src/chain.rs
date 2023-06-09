@@ -5,25 +5,25 @@ use ethers_core::types::{Address, U256};
 
 use dotenv::dotenv;
 use ethers::abi::Abi;
-use ethers::contract::ContractError;
+// use ethers::contract::ContractError;
 use ethers::prelude::*;
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
 // use hex;
 use crate::config::{INCOMING_EML_PATH, LOGIN_ID_KEY, LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY};
 use crate::smtp_client::EmailSenderClient;
-use hex_literal::hex;
+// use hex_literal::hex;
 use k256::ecdsa::SigningKey;
-use rand::thread_rng;
+// use rand::thread_rng;
 use serde_json::Value;
 use std::convert::TryFrom;
 use std::env;
 use std::error::Error;
 use std::fs;
-use std::borrow::Borrow;
+// use std::borrow::Borrow;
 use std::str::{self, FromStr};
-use rustc_hex::{FromHex, ToHex};
-use std::sync::Arc;
+// use rustc_hex::{FromHex, ToHex};
+// use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 struct CircomCalldata {
@@ -34,7 +34,7 @@ struct CircomCalldata {
 }
 
 // Define a new function that takes optional arguments and provides default values
-fn get_calldata(dir: Option<&str>, nonce: Option<&str>) -> Result<CircomCalldata, Box<dyn Error>> {
+pub fn get_calldata(dir: Option<&str>, nonce: Option<&str>) -> Result<CircomCalldata, Box<dyn Error>> {
     // Provide default values if arguments are not specified
     let dir = dir.unwrap_or("");
     let nonce = nonce.unwrap_or("");
@@ -238,7 +238,7 @@ pub async fn get_token_balance(
     test: bool,
     user_address: &str,
     token_name: &str,
-) -> Result<U256, Box<dyn std::error::Error>> {
+) -> Result<U256, Box<dyn Error>> {
     // Load environment variables from the .env file
     dotenv().ok();
     let logic_contract_address: Address = std::env::var("CONTRACT_ADDRESS").unwrap().parse()?;

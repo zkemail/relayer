@@ -1,4 +1,3 @@
-pub mod chain;
 pub mod config;
 pub mod coordinator;
 pub mod imap_client;
@@ -6,8 +5,11 @@ pub mod parse_email;
 pub mod processer;
 pub mod smtp_client;
 pub mod strings;
+pub mod chain;
 use anyhow::{anyhow, Result};
-use coordinator::calculate_address;
+use core::future::Future;
+use chain::get_token_balance;
+use coordinator::{calculate_address, BalanceRequest};
 use config::{
     IMAP_AUTH_TYPE_KEY, IMAP_AUTH_URL_KEY, IMAP_CLIENT_ID_KEY, IMAP_CLIENT_SECRET_KEY,
     IMAP_DOMAIN_NAME_KEY, IMAP_PORT_KEY, IMAP_REDIRECT_URL_KEY, IMAP_TOKEN_URL_KEY, LOGIN_ID_KEY,
@@ -28,6 +30,8 @@ use std::{
     error::Error,
     fs,
     hash::{Hash, Hasher},
+    pin::Pin,
+    boxed::Box
 };
 use strings::{first_reply, invalid_reply};
 
@@ -89,26 +93,59 @@ async fn main() -> Result<()> {
                 if let Some(b) = fetch.body() {
                     let body = String::from_utf8(b.to_vec())?;
                     println!("body: {}", body);
-                    let validation: Result<(ValidationStatus, Option<String>, Option<String>, Option<String>)> = validate_email(&body.as_str(), &sender).await;
+                    let validation: Result<(ValidationStatus, Option<String>, Option<String>, Option<BalanceRequest>)> = validate_email(&body.as_str(), &sender).await;
                     match validation {
-                        Ok((validation_status, salt_sender, salt_receiver, sender_address)) => {
-                            // Handle the successful case here
-                            tokio::spawn(async move {
-                                loop {
-                                    let balance = chain::get_token_balance(false, sender_address.unwrap().as_str(), currency).await.unwrap();
-                                    if let Ok(_) = balance {
-                                        break;
+                        Ok((validation_status, salt_sender, salt_receiver, balance_request)) => {
+                            let file_id = salt_sender.unwrap() + "_" + salt_receiver.unwrap().as_str();
+                            let email_handle_result = match validation_status {
+                                ValidationStatus::Ready =>
+                                    handle_email(body, &zk_email_circom_path, Some(file_id)).await,
+                                ValidationStatus::Pending => {
+                                    let BalanceRequest {
+                                        address,
+                                        amount,
+                                        token_name,
+                                    } = balance_request.unwrap();
+                                    
+                                    let validation_future = tokio::task::spawn(async move {
+                                        loop {
+                                            let valid = match get_token_balance(false, address.as_str(), token_name.as_str()).await {
+                                                Ok(balance) => {
+                                                    println!("balance: {}", balance);
+                                                    balance >= amount.as_str().into()
+                                                },
+                                                Err(error) => {
+                                                    println!("error: {}", error);
+                                                    false
+                                                }
+                                            };
+                                            if valid {
+                                                break;
+                                            }
+                                            tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+                                        }
+                                    });
+                                    match validation_future.await {
+                                        Ok(_) => {
+                                            handle_email(body, &zk_email_circom_path, Some(file_id)).await
+                                        }
+                                        Err(e) => {
+                                            println!("Pending validation error: {}", e);
+                                            Err(anyhow!("Pending validation failed"))
+                                        }
                                     }
-                                }
-                            });
+                                },
+                                ValidationStatus::Failure => {
+                                    return Err(anyhow!("Validation failed"));
+                                }  
+                            };
                         }
                         Err(error) => {
-                            // Handle the error case here
+                            // Handle the error case here   
                         }
                     }
                     
 
-                    handle_email(body, &zk_email_circom_path).await;
                 } else {
                     println!("no body");
                     break;

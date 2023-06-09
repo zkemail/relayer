@@ -44,10 +44,16 @@ struct EmailEvent {
     to: Option<String>,
 }
 
+pub struct BalanceRequest {
+    address: String,
+    amount: String,
+    token_name: String
+}
+
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum ValidationStatus {
-    True,
-    False,
+    Ready,
+    Failure,
     Pending,
 }
 
@@ -106,15 +112,19 @@ pub async fn send_to_modal(raw_email: String, hash: u64) -> Result<()> {
     Ok(())
 }
 
-pub async fn handle_email(raw_email: String, zk_email_circom_dir: &String) -> Result<()> {
+pub async fn handle_email(raw_email: String, zk_email_circom_dir: &String, nonce: Option<String>) -> Result<()> {
     // Path 1: Write raw_email to ../wallet_{hash}.eml
-    let hash = {
-        let mut hasher = DefaultHasher::new();
-        raw_email.hash(&mut hasher);
-        hasher.finish()
+    
+    let file_id = match nonce {
+        Some(s) => s,
+        None => {
+            let mut hasher = DefaultHasher::new();
+            raw_email.hash(&mut hasher);
+            hasher.finish().to_string()
+        }
     };
 
-    let file_path = format!("{}/wallet_{}.eml", "./received_eml", hash);
+    let file_path = format!("{}/wallet_{}.eml", "./received_eml", file_id);
     match fs::write(file_path.clone(), raw_email.clone()) {
         Ok(_) => println!("Email data written successfully to {}", file_path),
         Err(e) => println!("Error writing data to file: {}", e),
@@ -193,7 +203,7 @@ pub fn calculate_address(email: &str, message_id: &str) -> Result<String> {
     Ok(address)
 }
 
-pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) -> Result<(ValidationStatus, Option<String>, Option<String>, Box<dyn Future<Output = bool>>)> {
+pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) -> Result<(ValidationStatus, Option<String>, Option<String>, Option<BalanceRequest>)> {
     let subject = extract_subject(&raw_email).unwrap();
     
     // Validate subject, and send rejection/reformatting email if necessary
@@ -202,8 +212,6 @@ pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) -> Res
     )
     .unwrap();
     let subject_regex = re.clone();
-    let captures = re.captures(subject.clone().as_str().to_owned().as_str());
-
     let from = extract_from(&raw_email).unwrap();
     let message_id = extract_message_id(&raw_email).unwrap();
     println!(
@@ -216,9 +224,11 @@ pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) -> Res
     let mut sender_salt: Option<String> = None;
     let mut recipient_salt: Option<String> = None;
     let mut sender_address: Option<String> = None; // Included since we want to check its balance before sending
-    let mut callback_condition: Box<dyn Future<Output = bool>> = Box::new(async move {false}); 
-
+    let mut balance_request: Option<BalanceRequest> = None;
+    
     if subject_regex.is_match(subject.as_str()) {
+        let regex_subject = subject.clone();
+        let captures = re.captures(regex_subject.as_str());
         if let Some(captures) = captures {
             // Extract the amount and recipient from the captures
             let amount = captures.get(2).map_or("", |m| m.as_str());
@@ -238,25 +248,27 @@ pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) -> Res
             // TODO: Check balance here
             if sender_salt_exists {
                 custom_reply = first_reply(amount, currency, recipient);
-                valid = ValidationStatus::True;
+                valid = ValidationStatus::Ready;
             } else {
                 custom_reply = pending_reply(sender_address.clone().unwrap().as_str(), amount, currency, recipient);
                 valid = ValidationStatus::Pending;
             }
-            callback_condition = Box::new(async move {
-                get_token_balance(false, sender_address.unwrap().as_str(), currency).await.unwrap() > amount.into()
+            balance_request = Some(BalanceRequest {
+                address: sender_address.unwrap(),
+                amount: amount.to_string(),
+                tokenName: currency.to_string(),
             });
         } else {
             custom_reply = invalid_reply("seems to match regex but is invalid");
-            valid = ValidationStatus::False;
+            valid = ValidationStatus::Failure;
         }
     } else {
         custom_reply = invalid_reply("failed regex");
-        valid = ValidationStatus::False;
+        valid = ValidationStatus::Failure;
     }
     if ValidationStatus::True == valid {
         println!("Send valid! Validating proof...");
-    } else if valid == ValidationStatus::Pending {
+    } else if valid == ValidationStatus::Pending {  
         println!("Send valid, waiting for funds...");
     } else {
         println!("Send invalid! Regex failed...");
@@ -267,5 +279,5 @@ pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) -> Res
         Err(e) => println!("Error sending confirmation email: {}", e),
     }
 
-    return Ok((valid, sender_salt, recipient_salt, callback_condition));
+    return Ok((valid, sender_salt, recipient_salt, balance_request));
 }
