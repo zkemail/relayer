@@ -256,7 +256,7 @@ pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) -> Res
             balance_request = Some(BalanceRequest {
                 address: sender_address.unwrap(),
                 amount: amount.to_string(),
-                tokenName: currency.to_string(),
+                token_name: currency.to_string(),
             });
         } else {
             custom_reply = invalid_reply("seems to match regex but is invalid");
@@ -266,7 +266,7 @@ pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) -> Res
         custom_reply = invalid_reply("failed regex");
         valid = ValidationStatus::Failure;
     }
-    if ValidationStatus::True == valid {
+    if ValidationStatus::Ready == valid {
         println!("Send valid! Validating proof...");
     } else if valid == ValidationStatus::Pending {  
         println!("Send valid, waiting for funds...");
