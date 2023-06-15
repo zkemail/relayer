@@ -20,19 +20,9 @@ use coordinator::{handle_email, send_to_modal, ValidationStatus, validate_email}
 use dotenv::dotenv;
 use http::StatusCode;
 use imap_client::{EmailReceiver, IMAPAuth};
-use parse_email::*;
-use regex::Regex;
-use reqwest::Client;
-use serde::Deserialize;
 use smtp_client::EmailSenderClient;
 use std::{
-    collections::hash_map::DefaultHasher,
     env,
-    error::Error,
-    fs,
-    hash::{Hash, Hasher},
-    pin::Pin,
-    boxed::Box
 };
 use strings::{first_reply, invalid_reply};
 
@@ -63,7 +53,7 @@ async fn main() -> Result<()> {
     };
 
     let mut receiver = EmailReceiver::construct(&domain_name, port, imap_auth.clone()).await?;
-    let mut sender: EmailSenderClient = EmailSenderClient::new(
+    let sender: EmailSenderClient = EmailSenderClient::new(
         env::var(LOGIN_ID_KEY)?.as_str(),
         env::var(LOGIN_PASSWORD_KEY)?.as_str(),
         Some(env::var(SMTP_DOMAIN_NAME_KEY)?.as_str()),
@@ -94,7 +84,7 @@ async fn main() -> Result<()> {
                 if let Some(b) = fetch.body() {
                     let body = String::from_utf8(b.to_vec())?;
                     println!("body: {}", body);
-                    let validation: Result<(ValidationStatus, Option<String>, Option<String>, Option<BalanceRequest>)> = validate_email(&body.as_str(), &sender).await;
+                    let validation = validate_email(&body.as_str(), &sender).await;
                     match validation {
                         Ok((validation_status, salt_sender, salt_receiver, balance_request)) => {
                             let file_id = salt_sender.unwrap() + "_" + salt_receiver.unwrap().as_str();
@@ -112,7 +102,7 @@ async fn main() -> Result<()> {
                                             let valid = match get_token_balance(false, address.as_str(), token_name.as_str()).await {
                                                 Ok(balance) => {
                                                     let cloned_amount = amount.clone();
-                                                    println!("balance: {}", balance);
+                                                    println!("Balance: {}", balance);
                                                     let amount_u256 = U256::from_dec_str(&cloned_amount).unwrap_or_else(|_| U256::zero());
                                                     balance >= amount_u256
                                                 },
@@ -144,10 +134,9 @@ async fn main() -> Result<()> {
                         }
                         Err(error) => {
                             // Handle the error case here   
+                            return Err(error);
                         }
                     }
-                    
-
                 } else {
                     println!("no body");
                     break;

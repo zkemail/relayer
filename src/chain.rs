@@ -1,4 +1,3 @@
-use ethers_core::types::{Address, U256};
 // use ethers_core::utils::CompiledContract;
 // use ethers_providers::{Http, Middleware, Provider};
 // use ethers_signers::{LocalWallet, Signer};
@@ -8,6 +7,7 @@ use ethers::abi::Abi;
 // use ethers::contract::ContractError;
 use ethers::prelude::*;
 use anyhow::{Error};
+use ethers::core::types::{Address, U256, H160};
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
 // use hex;
@@ -119,7 +119,7 @@ pub async fn get_provider(test: bool) -> Result<Provider<Http>, Error> {
     };
     // Get the private key from the environment variable
     println!("rpcurl: {}", rpcurl);
-    
+
     let provider = Provider::<Http>::try_from(rpcurl)?;
     Ok(provider)
 }
@@ -154,9 +154,6 @@ pub async fn get_signer(test: bool) -> Result<SignerMiddleware<Provider<Http>, W
     let private_key_hex =
         std::env::var("PRIVATE_KEY").expect("The PRIVATE_KEY environment variable must be set");
     let wallet: LocalWallet = LocalWallet::from_str(&private_key_hex)?;
-    println!("Wallet address: {}", wallet.address());
-    println!("Provider: {:?}", provider);
-    // TODO: Hardcoded chain id
     let signer = SignerMiddleware::new(provider, wallet.with_chain_id(chain_id));
     Ok(signer)
 }
@@ -232,7 +229,7 @@ fn reply_with_message(nonce: &str, reply: &str) {
     let confirmation = sender.reply_all(&raw_email, &reply);
 }
 
- 
+
 // Given an address and token, get the balance of that token for that address from the chain
 // This can be done on a local light node or fork to ensure future tx data is not leaked
 pub async fn get_token_balance(
@@ -242,16 +239,17 @@ pub async fn get_token_balance(
 ) -> Result<U256, Error> {
     // Load environment variables from the .env file
     dotenv().ok();
+    let abi = get_abi(AbiType::Wallet)?;
+    let signer = get_signer(test).await?;
     let logic_contract_address: Address = std::env::var("CONTRACT_ADDRESS").unwrap().parse()?;
-    let logic_contract = ContractInstance::new(logic_contract_address, get_abi(AbiType::Wallet).unwrap(), get_signer(test).await.unwrap());
-    let token_registry_address = Address::from_str(logic_contract.method::<_, String>("tokenRegistry", ())?.call().await?.as_str())?;
-    let token_registry_contract = ContractInstance::new(token_registry_address, get_abi(AbiType::TokenRegistry).unwrap(), get_signer(test).await.unwrap());
-    let erc20_address = token_registry_contract.method::<_, Address>("getContractAddress", token_name.to_string())?.call().await?;
+    let logic_contract = ContractInstance::new(logic_contract_address, abi, signer);
+    let erc20_address_method = logic_contract.method::<_, Address>("getTokenAddress", "DAI".to_owned())?;
+    let erc20_address = erc20_address_method.call().await?;
     let erc_contract = ContractInstance::new(erc20_address, get_abi(AbiType::ERC20).unwrap(), get_signer(test).await.unwrap());
 
     // Call the balanceOf function on the ERC20 contract
     let balance: U256 = erc_contract
-        .method::<_, U256>("balanceOf", U256::from_str(user_address)?)
+        .method::<_, U256>("balanceOf", Address::from_str(user_address).unwrap())
         .unwrap()
         .call()
         .await?;
@@ -260,3 +258,22 @@ pub async fn get_token_balance(
 }
 
 
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_get_token_balance() {
+        let balance = get_token_balance(false, "0x11fE4B6AE13d2a6055C8D9cF65c55bac32B5d844", "DAI").await;
+        
+        match balance {
+            Ok(bal) => {
+                assert!(bal > U256::zero(), "Balance must be more than 0");
+            },
+            Err(e) => {
+                println!("Error: {:?}", e);
+                assert!(false, "Error getting balance");
+            }
+        }
+    }
+}
