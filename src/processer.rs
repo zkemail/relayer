@@ -2,16 +2,16 @@ use anyhow::{anyhow, Result};
 use fancy_regex::Regex;
 use imap::types::Fetch;
 
-use crate::imap_client::EmailReceiver;
+use crate::imap_client::ImapClient;
 
 #[derive(Debug)]
 pub struct EmailProcesser {
-    receiver: EmailReceiver,
+    receiver: ImapClient,
 }
 
 impl EmailProcesser {
     const SUBJECT_REGEX: &'static str = r"Email Wallet Manipulation \d+";
-    pub fn new(receiver: EmailReceiver) -> Self {
+    pub fn new(receiver: ImapClient) -> Self {
         Self { receiver }
     }
 

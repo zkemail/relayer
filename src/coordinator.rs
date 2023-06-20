@@ -3,8 +3,7 @@ use crate::config::{
     IMAP_DOMAIN_NAME_KEY, IMAP_PORT_KEY, IMAP_REDIRECT_URL_KEY, IMAP_TOKEN_URL_KEY, LOGIN_ID_KEY,
     LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY, SMTP_PORT_KEY, ZK_EMAIL_PATH_KEY,
 };
-use crate::chain::{get_token_balance};
-use crate::imap_client::{EmailReceiver, IMAPAuth};
+use crate::imap_client::{ImapClient, IMAPAuth};
 use crate::parse_email::*;
 use crate::smtp_client::EmailSenderClient;
 use crate::strings::{first_reply, invalid_reply, pending_reply};

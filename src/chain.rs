@@ -232,7 +232,7 @@ fn reply_with_message(nonce: &str, reply: &str) {
 
 // Given an address and token, get the balance of that token for that address from the chain
 // This can be done on a local light node or fork to ensure future tx data is not leaked
-pub async fn get_token_balance(
+pub async fn query_balance(
     test: bool,
     user_address: &str,
     token_name: &str,
@@ -263,8 +263,8 @@ mod test {
     use super::*;
 
     #[tokio::test]
-    async fn test_get_token_balance() {
-        let balance = get_token_balance(false, "0x11fE4B6AE13d2a6055C8D9cF65c55bac32B5d844", "DAI").await;
+    async fn test_query_balance() {
+        let balance = query_balance(false, "0x11fE4B6AE13d2a6055C8D9cF65c55bac32B5d844", "DAI").await;
         
         match balance {
             Ok(bal) => {

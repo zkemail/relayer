@@ -1,3 +1,4 @@
+pub mod chain;
 pub mod config;
 pub mod coordinator;
 pub mod imap_client;
@@ -5,25 +6,22 @@ pub mod parse_email;
 pub mod processer;
 pub mod smtp_client;
 pub mod strings;
-pub mod chain;
 use anyhow::{anyhow, Result};
-use ethers_core::types::U256;
-use core::future::Future;
-use chain::get_token_balance;
-use coordinator::{calculate_address, BalanceRequest};
+use chain::query_balance;
 use config::{
     IMAP_AUTH_TYPE_KEY, IMAP_AUTH_URL_KEY, IMAP_CLIENT_ID_KEY, IMAP_CLIENT_SECRET_KEY,
     IMAP_DOMAIN_NAME_KEY, IMAP_PORT_KEY, IMAP_REDIRECT_URL_KEY, IMAP_TOKEN_URL_KEY, LOGIN_ID_KEY,
     LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY, SMTP_PORT_KEY, ZK_EMAIL_PATH_KEY,
 };
-use coordinator::{handle_email, send_to_modal, ValidationStatus, validate_email};
+use coordinator::{calculate_address, BalanceRequest};
+use coordinator::{handle_email, send_to_modal, validate_email, ValidationStatus};
+use core::future::Future;
 use dotenv::dotenv;
+use ethers_core::types::U256;
 use http::StatusCode;
-use imap_client::{EmailReceiver, IMAPAuth};
+use imap_client::{ImapClient, IMAPAuth};
 use smtp_client::EmailSenderClient;
-use std::{
-    env,
-};
+use std::env;
 use strings::{first_reply, invalid_reply};
 
 #[tokio::main]
@@ -52,7 +50,7 @@ async fn main() -> Result<()> {
         panic!("Not supported auth type.");
     };
 
-    let mut receiver = EmailReceiver::construct(&domain_name, port, imap_auth.clone()).await?;
+    let mut receiver = ImapClient::construct(&domain_name, port, imap_auth.clone()).await?;
     let sender: EmailSenderClient = EmailSenderClient::new(
         env::var(LOGIN_ID_KEY)?.as_str(),
         env::var(LOGIN_PASSWORD_KEY)?.as_str(),
@@ -60,13 +58,9 @@ async fn main() -> Result<()> {
     );
     println!("Email receiver constructed with auto-reconnect.");
     loop {
-        receiver
-            .wait_new_email(&domain_name, port, &imap_auth.clone())
-            .await?;
+        receiver.wait_new_email().await?;
         println!("new email!");
-        let fetches = receiver
-            .retrieve_new_emails(&domain_name, port, &imap_auth.clone())
-            .await?;
+        let fetches = receiver.retrieve_new_emails().await?;
         for fetched in fetches.into_iter() {
             for fetch in fetched.into_iter() {
                 if let Some(e) = fetch.envelope() {
@@ -87,10 +81,12 @@ async fn main() -> Result<()> {
                     let validation = validate_email(&body.as_str(), &sender).await;
                     match validation {
                         Ok((validation_status, salt_sender, salt_receiver, balance_request)) => {
-                            let file_id = salt_sender.unwrap() + "_" + salt_receiver.unwrap().as_str();
+                            let file_id =
+                                salt_sender.unwrap() + "_" + salt_receiver.unwrap().as_str();
                             let email_handle_result = match validation_status {
-                                ValidationStatus::Ready =>
-                                    handle_email(body, &zk_email_circom_path, Some(file_id)).await,
+                                ValidationStatus::Ready => {
+                                    handle_email(body, &zk_email_circom_path, Some(file_id)).await
+                                }
                                 ValidationStatus::Pending => {
                                     let BalanceRequest {
                                         address,
@@ -99,13 +95,21 @@ async fn main() -> Result<()> {
                                     } = balance_request.unwrap();
                                     let validation_future = tokio::task::spawn(async move {
                                         loop {
-                                            let valid = match get_token_balance(false, address.as_str(), token_name.as_str()).await {
+                                            let valid = match query_balance(
+                                                false,
+                                                address.as_str(),
+                                                token_name.as_str(),
+                                            )
+                                            .await
+                                            {
                                                 Ok(balance) => {
                                                     let cloned_amount = amount.clone();
                                                     println!("Balance: {}", balance);
-                                                    let amount_u256 = U256::from_dec_str(&cloned_amount).unwrap_or_else(|_| U256::zero());
+                                                    let amount_u256 =
+                                                        U256::from_dec_str(&cloned_amount)
+                                                            .unwrap_or_else(|_| U256::zero());
                                                     balance >= amount_u256
-                                                },
+                                                }
                                                 Err(error) => {
                                                     println!("error: {}", error);
                                                     false
@@ -114,26 +118,30 @@ async fn main() -> Result<()> {
                                             if valid {
                                                 break;
                                             }
-                                            tokio::time::sleep( tokio::time::Duration::from_millis(1000)).await;
+                                            tokio::time::sleep(tokio::time::Duration::from_millis(
+                                                1000,
+                                            ))
+                                            .await;
                                         }
                                     });
                                     match validation_future.await {
                                         Ok(_) => {
-                                            handle_email(body, &zk_email_circom_path, Some(file_id)).await
+                                            handle_email(body, &zk_email_circom_path, Some(file_id))
+                                                .await
                                         }
                                         Err(e) => {
                                             println!("Pending validation error: {}", e);
                                             Err(anyhow!("Pending validation failed"))
                                         }
                                     }
-                                },
+                                }
                                 ValidationStatus::Failure => {
                                     return Err(anyhow!("Validation failed"));
-                                }  
+                                }
                             };
                         }
                         Err(error) => {
-                            // Handle the error case here   
+                            // Handle the error case here
                             return Err(error);
                         }
                     }

@@ -12,6 +12,15 @@ use std::io;
 use std::net::TcpStream;
 use std::slice::Iter;
 
+// We cache the domain name, port, and auth for reconnection on failure
+#[derive(Debug)]
+pub struct ImapClient {
+    imap_session: Session<TlsStream<TcpStream>>,
+    domain_name: String,
+    port: u16,
+    auth: IMAPAuth,
+}
+
 #[derive(Debug, Clone)]
 pub enum IMAPAuth {
     Password {
@@ -26,12 +35,6 @@ pub enum IMAPAuth {
         token_url: String,
         redirect_url: String,
     },
-}
-
-// We cache the domain name, port, and auth for reconnection on failure
-#[derive(Debug)]
-pub struct EmailReceiver {
-    imap_session: Session<TlsStream<TcpStream>>,
 }
 
 pub struct OAuthed {
@@ -50,15 +53,14 @@ impl<'a> Authenticator for OAuthed {
     }
 }
 
-impl EmailReceiver {
+impl ImapClient {
     pub async fn construct(domain_name: &str, port: u16, auth: IMAPAuth) -> Result<Self> {
-        let mut retry_count = 0;
-        println!("Creating TLS tunnel...");
+        println!("Trying to construct...");
         let tls = native_tls::TlsConnector::builder().build()?;
         println!("Beginning connection process to IMAP server...");
         let client = imap::connect((domain_name, port), domain_name, &tls)?;
         println!("IMAP client connected to {:?} {:?}", domain_name, client);
-        let mut imap_session = match auth {
+        let mut imap_session = match auth.clone() {
             IMAPAuth::Password { id, password } => client.login(id, password).map_err(|e| e.0),
             IMAPAuth::OAuth {
                 user_id,
@@ -76,7 +78,7 @@ impl EmailReceiver {
                 )
                 .set_redirect_uri(RedirectUrl::new(redirect_url)?);
                 let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
-                let (auth_url, csrf_token) = oauth_client
+                let (auth_url, _) = oauth_client
                     .authorize_url(CsrfToken::new_random)
                     // Set the desired scopes.
                     .add_scope(Scope::new("https://mail.google.com/".to_string()))
@@ -101,19 +103,19 @@ impl EmailReceiver {
             }
         }?;
         imap_session.select("INBOX")?;
-        Ok(Self { imap_session })
+        Ok(Self {
+            imap_session,
+            domain_name: domain_name.to_string(),
+            port,
+            auth,
+        })
     }
 
-    pub async fn wait_new_email(
-        &mut self,
-        domain_name: &str,
-        port: u16,
-        auth: &IMAPAuth,
-    ) -> Result<()> {
+    pub async fn wait_new_email(&mut self) -> Result<()> {
         loop {
             if self.idle_wait().await.is_err() {
                 println!("Connection reset, reconnecting...");
-                self.reconnect(domain_name, port, auth).await?;
+                self.reconnect().await?;
             } else {
                 return Ok(());
             }
@@ -121,16 +123,18 @@ impl EmailReceiver {
     }
 
     async fn idle_wait(&mut self) -> Result<()> {
-        let mut idle = self.imap_session.idle()?;
+        let idle = self.imap_session.idle()?;
         idle.wait()?;
         Ok(())
     }
 
-    async fn reconnect(&mut self, domain_name: &str, port: u16, auth: &IMAPAuth) -> Result<()> {
+    async fn reconnect(&mut self) -> Result<()> {
         let mut retry_count = 0;
         let mut MAX_RETRIES = 5;
         while retry_count < MAX_RETRIES {
-            match Self::construct(domain_name, port, auth.clone()).await {
+            match ImapClient::construct(self.domain_name.as_str(), self.port, self.auth.clone())
+                .await
+            {
                 Ok(new_client) => {
                     self.imap_session = new_client.imap_session;
                     return Ok(());
@@ -148,12 +152,8 @@ impl EmailReceiver {
         ))
     }
 
-    pub async fn retrieve_new_emails(
-        &mut self,
-        domain_name: &str,
-        port: u16,
-        auth: &IMAPAuth,
-    ) -> Result<Vec<ZeroCopy<Vec<Fetch>>>> {
+
+    pub async fn retrieve_new_emails(&mut self) -> Result<Vec<ZeroCopy<Vec<Fetch>>>> {
         loop {
             match self.imap_session.uid_search("UNSEEN") {
                 Ok(uids) => {
@@ -169,7 +169,7 @@ impl EmailReceiver {
                 }
                 Err(e) => {
                     println!("Connection reset, reconnecting...");
-                    self.reconnect(domain_name, port, auth).await?;
+                    self.reconnect().await?;
                 }
             }
         }
