@@ -19,13 +19,43 @@ use core::future::Future;
 use dotenv::dotenv;
 use ethers_core::types::U256;
 use http::StatusCode;
-use imap_client::{ImapClient, IMAPAuth};
+use imap_client::{IMAPAuth, ImapClient};
 use smtp_client::EmailSenderClient;
 use std::env;
 use strings::{first_reply, invalid_reply};
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let args: Vec<String> = env::args().collect();
+
+    match args.get(1) {
+        Some(arg) => match arg.as_str() {
+            "chain" => {
+                if args.len() < 5 {
+                    println!("Function1 requires three additional parameters: a bool to force localhost [usually false], a directory string, and a nonce string.");
+                } else {
+                    let force_localhost = args[2]
+                        .parse::<bool>()
+                        .expect("Error parsing force_localhost. Should be 'true' or 'false'");
+
+                    let dir = &args[3];
+                    let nonce = &args[4];
+
+                    chain::send_to_chain(force_localhost, dir, nonce).await?;
+                };
+                Ok(())
+            }
+            "relayer" => {
+                run_relayer().await?;
+                Ok(())
+            }
+            _ => Err(anyhow!("Invalid function! Use either 'chain' or 'relayer'")),
+        },
+        None => Err(anyhow!("Please provide a function to call! Use either 'chain' or 'relayer'")),
+    }
+}
+
+async fn run_relayer() -> Result<()> {
     dotenv().ok();
 
     let domain_name = env::var(IMAP_DOMAIN_NAME_KEY)?;

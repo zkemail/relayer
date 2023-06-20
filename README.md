@@ -46,7 +46,7 @@ sudo sysctl -p
 Test chain connection to verify that your connection to the chain works and simple tx's will send.
 
 ```sh
-cargo run --bin chain
+cargo test
 ```
 
 ### Test proofgen
@@ -63,7 +63,7 @@ To test local proofgen, send `relayer@sendeth.org` an email while relayer is run
 First, run the relayer.
 
 ```sh
-cargo run --bin relayer
+cargo run relayer
 ```
 
 ### Run infra

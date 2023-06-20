@@ -109,10 +109,10 @@ pub enum AbiType {
     TokenRegistry,
 }
 
-pub async fn get_provider(test: bool) -> Result<Provider<Http>, Error> {
+pub async fn get_provider(force_localhost: bool) -> Result<Provider<Http>, Error> {
     // let alchemy_api_key = std::env::var("ALCHEMY_GOERLI_KEY").unwrap();
     // println!("alchemy_api_key: {}", alchemy_api_key);
-    let rpcurl = if test {
+    let rpcurl = if force_localhost {
         "http://localhost:8548".to_string()
     } else {
         std::env::var("RPC_URL").expect("The RPC_URL environment variable must be set")
@@ -124,8 +124,8 @@ pub async fn get_provider(test: bool) -> Result<Provider<Http>, Error> {
     Ok(provider)
 }
 
-pub async fn get_gas_price(test: bool) -> Result<U256, Error> {
-    let provider = (get_provider(test).await).unwrap();
+pub async fn get_gas_price(force_localhost: bool) -> Result<U256, Error> {
+    let provider = (get_provider(force_localhost).await).unwrap();
     let gas_price = provider.get_gas_price().await?;
     Ok(gas_price)
 }
@@ -146,11 +146,11 @@ pub fn get_abi(abi_type: AbiType) -> Result<Abi, Error> {
     Ok(abi)
 }
 
-pub async fn get_signer(test: bool) -> Result<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>, Error> {
+pub async fn get_signer(force_localhost: bool) -> Result<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>, Error> {
     let chain_id: u64 = std::env::var("CHAIN_ID")
         .expect("The CHAIN_ID environment variable must be set")
         .parse()?;
-    let provider = (get_provider(test).await).unwrap();
+    let provider = (get_provider(force_localhost).await).unwrap();
     let private_key_hex =
         std::env::var("PRIVATE_KEY").expect("The PRIVATE_KEY environment variable must be set");
     let wallet: LocalWallet = LocalWallet::from_str(&private_key_hex)?;
@@ -161,15 +161,15 @@ pub async fn get_signer(test: bool) -> Result<SignerMiddleware<Provider<Http>, W
 // local: bool - whether or not to send to a local RPC
 // dir: data directory where the intermediate rapidsnark inputs/proofs will be stored
 pub async fn send_to_chain(
-    test: bool,
+    force_localhost: bool,
     dir: &str,
     nonce: &str,
 ) -> Result<(), Error> {
     // Load environment variables from the .env file
     dotenv().ok();
     let contract_address: Address = std::env::var("CONTRACT_ADDRESS").unwrap().parse()?;
-    let contract = ContractInstance::new(contract_address, get_abi(AbiType::Wallet).unwrap(), get_signer(test).await.unwrap());
-    let gas_price = get_gas_price(test).await.unwrap();
+    let contract = ContractInstance::new(contract_address, get_abi(AbiType::Wallet).unwrap(), get_signer(force_localhost).await.unwrap());
+    let gas_price = get_gas_price(force_localhost).await.unwrap();
 
     // Read proof and public parameters from JSON files
     let calldata = get_calldata(Some(dir), Some(nonce)).unwrap();
@@ -233,19 +233,19 @@ fn reply_with_message(nonce: &str, reply: &str) {
 // Given an address and token, get the balance of that token for that address from the chain
 // This can be done on a local light node or fork to ensure future tx data is not leaked
 pub async fn query_balance(
-    test: bool,
+    force_localhost: bool,
     user_address: &str,
     token_name: &str,
 ) -> Result<U256, Error> {
     // Load environment variables from the .env file
     dotenv().ok();
     let abi = get_abi(AbiType::Wallet)?;
-    let signer = get_signer(test).await?;
+    let signer = get_signer(force_localhost).await?;
     let logic_contract_address: Address = std::env::var("CONTRACT_ADDRESS").unwrap().parse()?;
     let logic_contract = ContractInstance::new(logic_contract_address, abi, signer);
     let erc20_address_method = logic_contract.method::<_, Address>("getTokenAddress", "DAI".to_owned())?;
     let erc20_address = erc20_address_method.call().await?;
-    let erc_contract = ContractInstance::new(erc20_address, get_abi(AbiType::ERC20).unwrap(), get_signer(test).await.unwrap());
+    let erc_contract = ContractInstance::new(erc20_address, get_abi(AbiType::ERC20).unwrap(), get_signer(force_localhost).await.unwrap());
 
     // Call the balanceOf function on the ERC20 contract
     let balance: U256 = erc_contract

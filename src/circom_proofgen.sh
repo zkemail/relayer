@@ -77,8 +77,8 @@ fi
 echo "Finished proofgen! Status: ${status_prover}"
 
 # TODO: Upgrade debug -> release and edit dockerfile to use release
-echo "${HOME}/relayer/target/debug/chain ${prover_output_path} ${nonce}"
-"${HOME}/relayer/target/debug/chain" "${prover_output_path}" "${nonce}"
+echo "${HOME}/relayer/target/debug/relayer chain false ${prover_output_path} ${nonce}"
+"${HOME}/relayer/target/debug/relayer" chain false "${prover_output_path}" "${nonce}"
 status_chain=$?
 if [ $status_chain -ne 0 ]; then
     echo "Chain send failed with status: ${status_chain}"
