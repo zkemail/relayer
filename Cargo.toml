@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+[[bin]]
+name = "chain"
+path = "src/chain.rs"
+
 [dependencies]
 # axum = { version = "0.6.12", features = ["multipart"] }
 serde = { version = "1.0", features = ["derive"] }

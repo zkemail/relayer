@@ -38,8 +38,8 @@ RUN git clone https://github.com/zkemail/relayer -b feat/modal_anon /relayer
 
 WORKDIR /relayer
 RUN cargo build --target x86_64-unknown-linux-gnu
-RUN cargo build --target x86_64-unknown-linux-gnu --release
 RUN cp /relayer/target/x86_64-unknown-linux-gnu/debug/chain /relayer/target/debug/
+RUN cargo build --target x86_64-unknown-linux-gnu --release
 RUN cp /relayer/target/x86_64-unknown-linux-gnu/release/chain /relayer/target/release/
 
 # Make necessary files executable
