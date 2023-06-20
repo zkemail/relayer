@@ -31,21 +31,16 @@ RUN npx task createFieldSources
 RUN npx task buildPistache
 RUN npx task buildProver
 
-# Clone the repository and set it as the working directory (uses localdir due to no-oss)
-# RUN git clone https://github.com/zkemail/relayer /relayer
-COPY ./relayer/Cargo.toml /relayer/Cargo.toml
-COPY ./relayer/.cargo /relayer/.cargo
-COPY ./relayer/Cargo.lock /relayer/Cargo.lock
-COPY ./relayer/src /relayer/src
-COPY ./relayer/abi /relayer/abi
-COPY ./relayer/received_eml/.placeholder /relayer/received_eml/.placeholder
+# Clone the repository and set it as the working directory
+RUN git clone https://github.com/zkemail/relayer -b feat/modal_anon /relayer
+# Can keep the below line if release build is compiled with unknown linux target
 # COPY ./relayer/target /relayer/target
+
 WORKDIR /relayer
 RUN cargo build --target x86_64-unknown-linux-gnu
 RUN cargo build --target x86_64-unknown-linux-gnu --release
 RUN cp /relayer/target/x86_64-unknown-linux-gnu/debug/chain /relayer/target/debug/
 RUN cp /relayer/target/x86_64-unknown-linux-gnu/release/chain /relayer/target/release/
-RUN mkdir /relayer/proofs
 
 # Make necessary files executable
 RUN chmod +x /relayer/src/circom_proofgen.sh
