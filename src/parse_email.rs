@@ -70,7 +70,7 @@ async fn get_public_key(domain: &str) -> Result<String, Box<dyn std::error::Erro
             // Format txt data to convert from u8 to string
             let data_bytes: Vec<u8> = txt_data.iter().flat_map(|b| b.as_ref()).cloned().collect();
             let data = String::from_utf8_lossy(&data_bytes);
-            println!("Data: {:?}", data);
+            println!("Data from txt record: {:?}", data);
 
             if data.contains("k=rsa;") {
                 let parts: Vec<_> = data.split("; ").collect();
@@ -142,7 +142,7 @@ mod test {
         let domain = "20210112._domainkey.gmail.com.";
         match get_public_key(domain).await {
             Ok(key) => println!("RSA public key: {}", key),
-            Err(e) => panic!("Error: {}", e),
+            Err(e) => panic!("Error getting public key: {}", e),
         }
     }
 }

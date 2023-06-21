@@ -3,8 +3,9 @@ use crate::config::{
     IMAP_DOMAIN_NAME_KEY, IMAP_PORT_KEY, IMAP_REDIRECT_URL_KEY, IMAP_TOKEN_URL_KEY, LOGIN_ID_KEY,
     LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY, SMTP_PORT_KEY, ZK_EMAIL_PATH_KEY,
 };
-use crate::imap_client::{ImapClient, IMAPAuth};
+// use crate::imap_client::{ImapClient, IMAPAuth};
 use crate::parse_email::*;
+use crate::chain::{query_address};
 use crate::smtp_client::EmailSenderClient;
 use crate::strings::{first_reply, invalid_reply, pending_reply};
 use anyhow::{anyhow, Result};
@@ -15,11 +16,14 @@ use arkworks_mimc::{
     },  
     MiMC, MiMCParameters
 };
-use ark_ff::{fields::Fp256, PrimeField};
+// use ark_ff::fields::PrimeField;
+use num_bigint::BigUint;
+use ethers::core::types::{U256};
+// use num_traits::ToPrimitive;
+// use ark_ff::{fields::Fp256, PrimeField};
 use ark_bn254::{Bn254, FrParameters, Fr};
 use dotenv::dotenv;
 use http::StatusCode;
-use lettre::message;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -149,37 +153,16 @@ pub async fn get_salt(email: &str, message_id: &str) -> Result<(bool, String)> {
         Ok((false, message_id.to_string()))
     }
 }
-
-// fn bytes_to_fp256_vec(input_arr: &[u8]) -> Vec<Fp256<FrParameters>> {
-//     let input_vec: Vec<Fr> = input_arr
-//     .chunks(32)
-//     .map(|chunk| {
-//         let mut arr = [0u8; 32];
-//         arr.copy_from_slice(chunk);
-//         Fr::from_repr(Fp256::<FrParameters>::from_repr(arr.into()).into_repr())
-//     })
-//     .collect();
-
-//     // input
-//     //     .chunks(32)
-//     //     .map(|chunk| {
-//     //         let mut arr = [0u8; 32];
-//     //         arr.copy_from_slice(chunk);
-//     //         Fp256::<FrParameters>::from_repr(arr.into())
-//     //     })
-//     //     .collect()
-// }
-
-// TODO FUNCTION
-pub fn calculate_address(email: &str, message_id: &str) -> Result<String> {
+pub async fn calculate_decimal_salt(email_address: &str, message_id: &str) -> Result<String> {
     let mimc = MiMC::<Fr, MIMC_5_220_BN254_PARAMS>::new(
         1,
         Fr::from(123),
         round_keys_contants_to_vec(&MIMC_5_220_BN254_ROUND_KEYS),
     );
 
-    let email_arr = email.as_bytes();
+    let email_arr = email_address.as_bytes();
     let message_id_arr = message_id.as_bytes();
+    
     const MAX_EMAIL_LEN: usize = 31;
     const MAX_MESSAGE_ID_LEN: usize = 128;
     let mut email_arr_32 = [0u8; MAX_EMAIL_LEN];
@@ -196,12 +179,26 @@ pub fn calculate_address(email: &str, message_id: &str) -> Result<String> {
     let mut input_arr = [0u8; MAX_EMAIL_LEN + MAX_MESSAGE_ID_LEN];
     input_arr[..MAX_EMAIL_LEN].copy_from_slice(&email_arr_32);
     input_arr[MAX_EMAIL_LEN..].copy_from_slice(&message_id_arr_32);
+    println!("input_arr: {:?}", input_arr);
     let input_vec = input_arr.map(|x| Fr::from(x)).to_vec();
-    let result = mimc.permute_feistel(input_vec);
-    let address = format!("{:?}", result);
-    Ok(address)
+    let create2_salt_fp256 = mimc.permute_feistel(input_vec)[0];
+    println!("create2_salt_fp256: {}", create2_salt_fp256);
+    // Assuming you have an Fp256 value called `fp_value`
+    let create2_salt_value: BigUint = create2_salt_fp256.into();
+
+    // To print the value in decimal
+    let decimal_salt = create2_salt_value.to_str_radix(10);
+    println!("Decimal create2 salt: {}", decimal_salt);
+
+    Ok(decimal_salt)
 }
 
+pub async fn calculate_address(email_address: &str, message_id: &str) -> Result<String> {
+    let decimal_salt = calculate_decimal_salt(email_address, message_id).await?;
+    let address_raw = query_address(false, decimal_salt.as_str()).await?;
+    let address = format!("0x{:x}", address_raw);
+    Ok(address)
+}
 pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) -> Result<(ValidationStatus, Option<String>, Option<String>, Option<BalanceRequest>)> {
     let subject = extract_subject(&raw_email).unwrap();
     
@@ -242,8 +239,8 @@ pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) -> Res
             let (recipient_salt_exists, recipient_salt_raw) = get_salt(recipient, message_id.as_str()).await.unwrap();
             sender_salt = Some(sender_salt_raw.clone());
             recipient_salt = Some(recipient_salt_raw.clone());
-            sender_address = Some(calculate_address(from.as_str(), sender_salt_raw.as_str()).unwrap());
-            let recipient_address = calculate_address(recipient, recipient_salt_raw.as_str()).unwrap();
+            sender_address = Some(calculate_address(from.as_str(), sender_salt_raw.as_str()).await.unwrap());
+            let recipient_address = calculate_address(recipient, recipient_salt_raw.as_str()).await.unwrap();
             // TODO: Check balance here
             if sender_salt_exists {
                 custom_reply = first_reply(amount, currency, recipient);
@@ -279,4 +276,35 @@ pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) -> Res
     }
 
     return Ok((valid, sender_salt, recipient_salt, balance_request));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_calculate_address() -> Result<()> {
+        let email_address = "aayushgupta05@gmail.com";
+        let message_id = "CA+OJ5QeHStpKMCy9fcpCaLe8TaKTomRRG0SzNJUYevZ=2QS=PA@mail.gmail.com";
+        let result = calculate_decimal_salt(email_address, message_id).await;
+        match result {
+            Ok(_) => (),
+            Err(e) => return Err(anyhow!("Failed to calculate decimal_salt: {}", e)),
+        };
+        let decimal_salt = result.unwrap();
+        assert!(!decimal_salt.is_empty(), "decimal_salt is empty");
+        println!("decimal_salt: {}", decimal_salt);
+        assert!(decimal_salt == "11578046119786885486589898473893761816011340408005885677852497807442621066251", "Decimal salt is incorrect");
+        
+        let result_address = calculate_address(email_address, message_id).await;
+        match result_address {
+            Ok(_) => (),
+            Err(e) => return Err(anyhow!("Failed to calculate address: {}", e)),
+        };
+        let address = result_address.unwrap();
+        assert!(!address.is_empty(), "address is empty");
+        println!("address: {}", address);
+        assert!(address == "0xc9fa80d22635e4a040385114b9fd7d66a8f7ef91", "Address is incorrect");
+        Ok(())
+    }
 }

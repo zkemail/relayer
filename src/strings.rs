@@ -3,7 +3,7 @@ pub const CHAIN: &str = "Ethereum Goerli";
 pub fn first_reply(amount: &str, currency: &str, recipient: &str) -> String {
     format!(
         "Valid send initiated. Sending {} {} to {} on {}. \
-        We will follow up with Etherscan link when finished! You are sending with ZK email technology. \
+        We will follow up with Etherscan link when finished! \n \n You are sending with ZK email technology. \
         The relayer will automatically prove, on-chain, that you sent an email authorizing this transaction.  \
         We will deploy a wallet for you if you don't have one. While we're in beta, we'll also give you \
         10 TestERC20 if you don't have any to start, but in the future when we use real currency, \
@@ -26,7 +26,7 @@ pub fn pending_reply(address: &str, amount: &str, currency: &str, recipient: &st
         "Creating new wallet for sender at {} -- in order to send this transaction, you must top up \
         that address with enough currency to send. Your send has been queued and will execute once we detect \
         enough balance in that account, and then send {} {} to {} on {}. \
-        We will follow up with Etherscan link when finished! You are sending with ZK email technology. \
+        We will follow up with Etherscan link when finished! \n \n You are sending with ZK email technology. \
         The relayer will automatically prove, on-chain, that you sent an email authorizing this transaction.  \
         We will deploy a wallet for you if you don't have one. While we're in beta, we'll also give you \
         10 TestERC20 if you don't have any to start, but in the future when we use real currency, \

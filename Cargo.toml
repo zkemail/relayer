@@ -53,4 +53,6 @@ ark-bn254 = { version = "^0.3.0", default-features = false, features = ["curve"]
 ark-std = { version = "^0.3.0", default-features = false }
 arkworks-mimc = { version = "^0.2.0", default-features = false, features = ["r1cs", "mimc-5-220-bn254"] }
 rustc-hex = "2.1.0"
+num-bigint = "0.4.3"
+num-traits = "0.2.15"
 # mailparse = "0.14.0"

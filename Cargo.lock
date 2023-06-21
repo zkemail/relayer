@@ -3175,6 +3175,8 @@ dependencies = [
  "lettre",
  "mail-auth",
  "native-tls",
+ "num-bigint",
+ "num-traits",
  "oauth2",
  "rand",
  "regex",

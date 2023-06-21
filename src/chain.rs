@@ -229,6 +229,21 @@ fn reply_with_message(nonce: &str, reply: &str) {
     let confirmation = sender.reply_all(&raw_email, &reply);
 }
 
+pub async fn query_address(
+    force_localhost: bool,
+    user_salt: &str,
+) -> Result<H160, Error> {
+    // Load environment variables from the .env file
+    dotenv().ok();
+    let abi = get_abi(AbiType::Wallet)?;
+    let signer = get_signer(force_localhost).await?;
+    let logic_contract_address: Address = std::env::var("CONTRACT_ADDRESS").unwrap().parse()?;
+    let logic_contract = ContractInstance::new(logic_contract_address, abi, signer);
+    let decimal_salt_u256 = U256::from_dec_str(&user_salt)?;
+    let address_method = logic_contract.method::<_, Address>("getOrCreateWallet", decimal_salt_u256)?;
+    let address = address_method.call().await?;
+    Ok(address)
+}
 
 // Given an address and token, get the balance of that token for that address from the chain
 // This can be done on a local light node or fork to ensure future tx data is not leaked
