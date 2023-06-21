@@ -89,7 +89,7 @@ async fn run_relayer() -> Result<()> {
     println!("Email receiver constructed with auto-reconnect.");
     loop {
         receiver.wait_new_email().await?;
-        println!("new email!");
+        println!("New email detected!");
         let fetches = receiver.retrieve_new_emails().await?;
         for fetched in fetches.into_iter() {
             for fetch in fetched.into_iter() {

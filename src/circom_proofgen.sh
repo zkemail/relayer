@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CIRCUIT_NAME="email"
+CIRCUIT_NAME="wallet"
 if source "/home/ubuntu/relayer/.env"; then
     echo "Sourced from /home/ubuntu/relayer/.env"
 elif source "/root/relayer/.env"; then

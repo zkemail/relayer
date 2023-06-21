@@ -173,7 +173,7 @@ stub['credentials_secret'] = modal.Secret(merged_credentials)
 
 
 @stub.function(cpu=14, memory=6000, secret=stub['credentials_secret'])
-@stub.web_endpoint(method="POST")
+@modal.web_endpoint(method="POST")
 def pull_and_prove_email(aws_url: str, nonce: str):
     download_and_write_file(aws_url, nonce)
     # Print the output of the 'proofgen' command
