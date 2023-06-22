@@ -113,6 +113,8 @@ async fn run_relayer() -> Result<()> {
                         Ok((validation_status, salt_sender, salt_receiver, balance_request)) => {
                             let file_id =
                                 salt_sender.unwrap() + "_" + salt_receiver.unwrap().as_str();
+                            println!("File ID: {}", file_id);
+                            println!("Validation status: {:?}", validation_status);
                             let email_handle_result = match validation_status {
                                 ValidationStatus::Ready => {
                                     handle_email(body, &zk_email_circom_path, Some(file_id)).await

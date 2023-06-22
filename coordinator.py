@@ -169,7 +169,7 @@ def prove_email(file_contents: str, nonce: str):
 
 
 # Create and deploy the secret containing AWS credentials and additional environment variables
-stub['credentials_secret'] = modal.Secret(merged_credentials)
+stub['credentials_secret'] = modal.Secret.from_dict(merged_credentials)
 
 
 @stub.function(cpu=14, memory=6000, secret=stub['credentials_secret'])

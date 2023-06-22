@@ -78,7 +78,7 @@ pub async fn send_to_modal(raw_email: String, hash: u64) -> Result<()> {
     // Path 2: Send to modal
     // Construct the URL with query parameters
     let webhook_url = format!(
-        "https://ziztuww--aayush-test.modal.run?aws_url={}&nonce={}",
+        "https://ziztuww--aayush-pull-and-prove-email.modal.run?aws_url={}&nonce={}",
         urlencoding::encode(&raw_email),
         hash
     );
@@ -117,7 +117,6 @@ pub async fn send_to_modal(raw_email: String, hash: u64) -> Result<()> {
 
 pub async fn handle_email(raw_email: String, zk_email_circom_dir: &String, nonce: Option<String>) -> Result<()> {
     // Path 1: Write raw_email to ../wallet_{hash}.eml
-    
     let file_id = match nonce {
         Some(s) => s,
         None => {
@@ -199,6 +198,7 @@ pub async fn calculate_address(email_address: &str, message_id: &str) -> Result<
     let address = format!("0x{:x}", address_raw);
     Ok(address)
 }
+
 pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) -> Result<(ValidationStatus, Option<String>, Option<String>, Option<BalanceRequest>)> {
     let subject = extract_subject(&raw_email).unwrap();
     
