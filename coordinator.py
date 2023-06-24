@@ -197,7 +197,7 @@ class DirectoryChangeHandler(FileSystemEventHandler):
             if (is_eml_file(file_name)):
                 # with open(event.src_path, 'r') as file:
                 #     email_content = file.read()
-                nonce = file_name[file_name.rfind('_') + 1:file_name.rfind('.')]
+                nonce = file_name[file_name.find('wallet_') + 7:file_name.rfind('.')]
                 aws_url = upload_file_to_s3(event.src_path, bucket_name, nonce)
 
                 if PROVER_TYPE == Prover.LOCAL:

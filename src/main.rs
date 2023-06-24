@@ -111,9 +111,9 @@ async fn run_relayer() -> Result<()> {
                     let validation = validate_email(&body.as_str(), &sender).await;
                     match validation {
                         Ok((validation_status, salt_sender, salt_receiver, balance_request)) => {
-                            let file_id =
-                                salt_sender.unwrap() + "_" + salt_receiver.unwrap().as_str();
-                            println!("File ID: {}", file_id);
+                            // Calculate the nonce used in the filename
+                            let file_id = format!("({})_({})", salt_sender.unwrap(), salt_receiver.unwrap().as_str());
+                            println!("File ID/Nonce: {}", file_id);
                             println!("Validation status: {:?}", validation_status);
                             let email_handle_result = match validation_status {
                                 ValidationStatus::Ready => {
@@ -168,13 +168,15 @@ async fn run_relayer() -> Result<()> {
                                     }
                                 }
                                 ValidationStatus::Failure => {
-                                    return Err(anyhow!("Validation failed"));
+                                    println!("Validation failed");
+                                    continue;
                                 }
                             };
                         }
                         Err(error) => {
                             // Handle the error case here
-                            return Err(error);
+                            println!("Error processing email: {}", error);
+                            continue;
                         }
                     }
                 } else {

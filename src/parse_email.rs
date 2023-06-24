@@ -88,18 +88,23 @@ async fn get_public_key(domain: &str) -> Result<String, Box<dyn std::error::Erro
 }
 
 pub fn extract_from(email: &str) -> Result<String, Box<dyn Error>> {
-    if let Some(from_start) = email.find("From:") {
-        let from_line_start = &email[from_start..];
-        if let Some(from_end) = from_line_start.find("\r\n") {
-            let from_line = &from_line_start[..from_end];
+    let mut from_addresses: Vec<String> = Vec::new();
+    let mut email_lines = email.lines();
+    while let Some(line) = email_lines.next() {
+        if line.starts_with("From:") {
+            let from_line = line;
             let email_start = from_line.find('<');
             let email_end = from_line.find('>');
             if let (Some(start), Some(end)) = (email_start, email_end) {
                 let from = &from_line[start + 1..end];
                 println!("From email address: {}", from);
-                return Ok(from.to_string());
+                from_addresses.push(from.to_string());
             }
         }
+    }
+
+    if !from_addresses.is_empty() {
+        return Ok(from_addresses.join(", "));
     }
     Err("Could not find from email address".into())
 }
