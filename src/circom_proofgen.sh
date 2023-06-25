@@ -5,8 +5,10 @@ if source "/home/ubuntu/relayer/.env"; then
     echo "Sourced from /home/ubuntu/relayer/.env"
 elif source "/root/relayer/.env"; then
     echo "Sourcing from /home/ubuntu/relayer/.env failed, sourced from /root/relayer/.env"
+elif source "./.env"; then
+    echo "Sourcing from /home/ubuntu/relayer/.env and /root/relayer/.env failed, sourced from ./.env"
 else
-    echo "Sourcing from both /home/ubuntu/relayer/.env and /root/relayer/.env failed, writing args to /root/relayer/.env"
+    echo "Sourcing from /home/ubuntu/relayer/.env, /root/relayer/.env, and ./.env failed, please write args to /root/relayer/.env"
 fi
 
 if [ $# -ne 1 ]; then
@@ -27,8 +29,8 @@ witness_path="${build_dir}/witness_${nonce}.wtns"
 proof_path="${prover_output_path}/rapidsnark_proof_${nonce}.json"
 public_path="${prover_output_path}/rapidsnark_public_${nonce}.json"
 
-echo "npx tsx ${zk_email_path}/src/scripts/generate_input.ts --email_file=${wallet_eml_path} --nonce=${nonce}"
-npx tsx "${zk_email_path}/src/scripts/generate_input.ts" --email_file="${wallet_eml_path}" --nonce="${nonce}"
+echo "npx tsx ${zk_email_path}/src/scripts/generate_input.ts --email_file='${wallet_eml_path}' --nonce='${nonce}'"
+npx tsx "${zk_email_path}/src/scripts/generate_input.ts" --email_file="${wallet_eml_path//=/\\=}" --nonce="${nonce//=/\\=}"
 status_inputgen=$?
 
 echo "Finished input gen! Status: ${status_inputgen}"

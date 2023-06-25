@@ -54,7 +54,7 @@ cargo test
 To test local proofgen, send `relayer@sendeth.org` an email while relayer is running then run
 
 ```sh
-./src/cirom_proofgen.sh
+./src/circom_proofgen.sh
 ```
 
 
