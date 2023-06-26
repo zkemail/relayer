@@ -30,7 +30,7 @@ proof_path="${prover_output_path}/rapidsnark_proof_${nonce}.json"
 public_path="${prover_output_path}/rapidsnark_public_${nonce}.json"
 
 echo "npx tsx ${zk_email_path}/src/scripts/generate_input.ts --email_file='${wallet_eml_path}' --nonce='${nonce}'"
-npx tsx "${zk_email_path}/src/scripts/generate_input.ts" --email_file="${wallet_eml_path//=/\\=}" --nonce="${nonce//=/\\=}"
+npx tsx "${zk_email_path}/src/scripts/generate_input.ts" --email_file="${wallet_eml_path}" --nonce="${nonce}"
 status_inputgen=$?
 
 echo "Finished input gen! Status: ${status_inputgen}"

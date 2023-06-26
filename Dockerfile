@@ -1,20 +1,19 @@
 FROM alpine/git as relayer_git
-ARG RELAYER_BRANCH_NAME=modal_anon
 RUN git clone --branch ${RELAYER_BRANCH_NAME} --single-branch https://github.com/zkemail/relayer /relayer
 WORKDIR /relayer
 RUN git rev-parse HEAD > relayer_latest_commit_hash
+RUN echo ${RELAYER_BRANCH_NAME} > relayer_branch_name
 
 FROM alpine/git as zkemail_git
-ARG ZKEMAIL_BRANCH_NAME=origin/anon_wallet
 RUN git clone --branch ${ZKEMAIL_BRANCH_NAME} --single-branch https://github.com/zkemail/zk-email-verify /zk-email-verify
 WORKDIR /zk-email-verify
 RUN git rev-parse HEAD > zkemail_latest_commit_hash
-
-ARG LATEST_RELAYER_COMMIT_HASH
-ARG LATEST_ZKEMAIL_COMMIT_HASH
+RUN echo ${ZKEMAIL_BRANCH_NAME} > zkemail_branch_name
 
 # Use the official Rust image as the base image
 FROM rust:latest
+ARG RELAYER_BRANCH_NAME=modal_anon
+ARG ZKEMAIL_BRANCH_NAME=anon_wallet
 
 # Install Node.js 16.x and Yarn
 RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && \
@@ -41,20 +40,31 @@ RUN npx task buildPistache
 RUN npx task buildProver
 
 # Copy the zkemail_latest_commit_hash files from the git stages
-COPY --from=zkemail_git /zk-email-verify/zkemail_latest_commit_hash /zkemail_latest_commit_hash
+COPY --from=zkemail_git /zk-email-verify/. /zk-email-verify-env/
+# COPY --from=zkemail_git /zk-email-verify/zkemail_latest_commit_hash /zkemail_latest_commit_hash
+# COPY --from=zkemail_git /zk-email-verify/zkemail_branch_name /zkemail_branch_name
 
 # Clone zk email repository at the latest commit and set it as the working directory
-RUN git clone https://github.com/zkemail/zk-email-verify -b anon_wallet /zk-email-verify
+RUN LATEST_ZKEMAIL_COMMIT_HASH=$(cat /zk-email-verify-env/zkemail_latest_commit_hash) && \
+    ZKEMAIL_BRANCH_NAME=$(cat /zk-email-verify-env/zkemail_branch_name) && \
+    git clone https://github.com/zkemail/zk-email-verify -b ${ZKEMAIL_BRANCH_NAME} /zk-email-verify && \
+    echo "Going to check out latest zk email commit hash: ${LATEST_COMMIT_HASH}"
+
 COPY ./zk-email-verify/build /zk-email-verify/build
 WORKDIR /zk-email-verify
 RUN yarn install
 
 # Copy the relayer_latest_commit_hash files from the git stages
-COPY --from=relayer_git /relayer/relayer_latest_commit_hash /relayer_latest_commit_hash
+COPY --from=relayer_git /relayer/. /relayer-env/
+# COPY --from=relayer_git /relayer/zrelayer_branch_name /relayer_branch_name
+# COPY --from=relayer_git /relayer/relayer_latest_commit_hash /relayer_latest_commit_hash
+ARG RELAYER_BRANCH_NAME
 
 # Clone the relayer repository at the latest commit and set it as the working directory
-RUN git clone --branch ${RELAYER_BRANCH_NAME} --single-branch https://github.com/zkemail/relayer /relayer \
-    && echo "Going to check out latest relayer commit hash: ${LATEST_COMMIT_HASH}"
+RUN LATEST_RELAYER_COMMIT_HASH=$(cat /relayer-env/relayer_latest_commit_hash) && \
+    RELAYER_BRANCH_NAME=$(cat /relayer-env/relayer_branch_name) && \
+    git clone --branch ${RELAYER_BRANCH_NAME} --single-branch https://github.com/zkemail/relayer /relayer \
+    && echo "Going to check out latest relayer commit hash: ${LATEST_RELAYER_COMMIT_HASH}"
 
 WORKDIR /relayer
 RUN git checkout ${LATEST_COMMIT_HASH}
