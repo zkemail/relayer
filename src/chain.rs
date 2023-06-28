@@ -84,12 +84,16 @@ fn parse_files_into_calldata(
         U256::from_dec_str(proof_json["pi_c"][1].as_str().unwrap()).unwrap(),
     ];
 
-    let signals: [U256; 34] = public_json
+    let signals_vec = public_json
         .as_array()
         .unwrap()
         .iter()
         .map(|x| U256::from_dec_str(x.as_str().unwrap()).unwrap())
-        .collect::<Vec<_>>()
+        .collect::<Vec<_>>();
+
+    println!("signals_vec: {:?}", signals_vec);
+    
+    let signals: [U256; 34] = signals_vec
         .as_slice()
         .try_into()
         .unwrap();

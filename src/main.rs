@@ -172,7 +172,7 @@ async fn run_relayer() -> Result<()> {
                                                 break;
                                             }
                                             tokio::time::sleep(tokio::time::Duration::from_millis(
-                                                1000,
+                                                4000,
                                             ))
                                             .await;
                                         }
