@@ -49,8 +49,8 @@ if [ $status_jswitgen -ne 0 ]; then
     exit 1
 fi
 
-# echo "/${build_dir}/${CIRCUIT_NAME}_cpp/email ${input_wallet_path} ${witness_path}"
-# "/${build_dir}/${CIRCUIT_NAME}_cpp/email" "${input_wallet_path}" "${witness_path}"
+# echo "/${build_dir}/${CIRCUIT_NAME}_cpp/${CIRCUIT_NAME} ${input_wallet_path} ${witness_path}"
+# "/${build_dir}/${CIRCUIT_NAME}_cpp/${CIRCUIT_NAME}" "${input_wallet_path}" "${witness_path}"
 # status_c_wit=$?
 
 # echo "Finished C witness gen! Status: ${status_c_wit}"
