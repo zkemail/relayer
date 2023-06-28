@@ -116,7 +116,8 @@ pub async fn send_to_modal(raw_email: String, hash: u64) -> Result<()> {
 }
 
 pub async fn handle_email(raw_email: String, zk_email_circom_dir: &String, nonce: Option<String>) -> Result<()> {
-    // Path 1: Write raw_email to ../wallet_{hash}.eml
+    // Path 1: Write raw_email to ../wallet_{nonce}.eml
+    // This nonce is usually (from_message_id)_(to_message_id), but absent of that is the hash 
     let file_id = match nonce {
         Some(s) => s,
         None => {
@@ -131,9 +132,7 @@ pub async fn handle_email(raw_email: String, zk_email_circom_dir: &String, nonce
         Ok(_) => println!("Email data written successfully to {}", file_path),
         Err(e) => println!("Error writing data to file: {}", e),
     }
-    std::thread::sleep(std::time::Duration::from_secs(3));
     Ok(())
-    // println!("Response status: {}", response.status());
 }
 
 /// This function retrieves the salt associated with an email address and message ID.
@@ -199,16 +198,23 @@ pub async fn calculate_address(email_address: &str, message_id: &str) -> Result<
     Ok(address)
 }
 
-pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) -> Result<(ValidationStatus, Option<String>, Option<String>, Option<BalanceRequest>)> {
-    let subject = extract_subject(&raw_email).unwrap();
-    
+// Note: This function often mis-infers things, and gives weird subjects like "Subject:To;"
+pub async fn validate_email_infer(raw_email: &str, emailer: &EmailSenderClient) -> Result<(ValidationStatus, Option<String>, Option<String>, Option<BalanceRequest>)> {
+    let from = extract_from(raw_email).unwrap_or("".to_string());
+    let subject = extract_subject(raw_email).unwrap_or("".to_string());
+    validate_email_envelope(raw_email, emailer, "From", "Subject").await
+}
+
+pub async fn validate_email_envelope(raw_email: &str, emailer: &EmailSenderClient, from_str: &str, subject_str: &str) -> Result<(ValidationStatus, Option<String>, Option<String>, Option<BalanceRequest>)> {
+    let from = from_str.to_string();
+    let subject = subject_str.to_string();
+
     // Validate subject, and send rejection/reformatting email if necessary
     let re = Regex::new(
         r"([Ss]end|[Tt]ransfer) ?\$?(\d+(\.\d+)?) (eth|usdc|dai|test|ETH|USDC|DAI|TEST|Dai|Eth|Usdc|Test) to (.+@.+(\..+)+)",
     )
     .unwrap();
     let subject_regex = re.clone();
-    let from = extract_from(&raw_email).unwrap();
     let message_id = extract_message_id(&raw_email).unwrap();
     println!(
         "Subject, from, message id: {:?} {:?} {:?}",
@@ -241,14 +247,15 @@ pub async fn validate_email(raw_email: &str, emailer: &EmailSenderClient) -> Res
             recipient_salt = Some(recipient_salt_raw.clone());
             sender_address = Some(calculate_address(from.as_str(), sender_salt_raw.as_str()).await.unwrap());
             let recipient_address = calculate_address(recipient, recipient_salt_raw.as_str()).await.unwrap();
-            // TODO: Check balance here
-            if sender_salt_exists {
-                custom_reply = first_reply(amount, currency, recipient);
-                valid = ValidationStatus::Ready;
-            } else {
-                custom_reply = pending_reply(sender_address.clone().unwrap().as_str(), amount, currency, recipient);
-                valid = ValidationStatus::Pending;
-            }
+            // TODO: Check balance here, then send the right email.
+            // Technically no difference between these two cases
+            // if sender_salt_exists {
+            //     custom_reply = first_reply(amount, currency, recipient);
+            //     valid = ValidationStatus::Ready;
+            // } else {
+            custom_reply = pending_reply(sender_address.clone().unwrap().as_str(), amount, currency, recipient);
+            valid = ValidationStatus::Pending;
+            // }
             balance_request = Some(BalanceRequest {
                 address: sender_address.unwrap(),
                 amount: amount.to_string(),

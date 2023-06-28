@@ -14,7 +14,7 @@ use config::{
     LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY, SMTP_PORT_KEY, ZK_EMAIL_PATH_KEY,
 };
 use coordinator::{calculate_address, BalanceRequest};
-use coordinator::{handle_email, send_to_modal, validate_email, ValidationStatus};
+use coordinator::{handle_email, send_to_modal, validate_email_envelope, ValidationStatus};
 use core::future::Future;
 use dotenv::dotenv;
 use ethers_core::types::U256;
@@ -51,7 +51,9 @@ async fn main() -> Result<()> {
             }
             _ => Err(anyhow!("Invalid function! Use either 'chain' or 'relayer'")),
         },
-        None => Err(anyhow!("Please provide a function to call! Use either 'chain' or 'relayer'")),
+        None => Err(anyhow!(
+            "Please provide a function to call! Use either 'chain' or 'relayer'"
+        )),
     }
 }
 
@@ -88,31 +90,50 @@ async fn run_relayer() -> Result<()> {
     );
     println!("Email receiver constructed with auto-reconnect.");
     loop {
+        println!("Waiting for new email...");
         receiver.wait_new_email().await?;
         println!("New email detected!");
         let fetches = receiver.retrieve_new_emails().await?;
         for fetched in fetches.into_iter() {
             for fetch in fetched.into_iter() {
-                if let Some(e) = fetch.envelope() {
-                    println!(
-                        "from: {}",
-                        String::from_utf8(e.from.as_ref().unwrap()[0].name.unwrap().to_vec())
-                            .unwrap()
-                    );
-                    let subject_str = String::from_utf8(e.subject.unwrap().to_vec()).unwrap();
-                    println!("subject: {}", subject_str);
-                } else {
-                    println!("no envelope");
-                    break;
-                }
                 if let Some(b) = fetch.body() {
+                    let from_addr: String;
+                    let subject_str: String;
+                    if let Some(e) = fetch.envelope() {
+                        from_addr = {
+                            let tag = &e.from.as_ref();
+                            println!("from {:?}", tag.ok_or(anyhow!("No from"))?[0]);
+                            let former = tag.ok_or(anyhow!("No from"))?[0]
+                                .mailbox
+                                .ok_or(anyhow!("No former part of the from address"))?;
+                            let latter = tag.ok_or(anyhow!("No from"))?[0]
+                                .host
+                                .ok_or(anyhow!("No latter part of the from address"))?;
+                            let address = format!(
+                                "{}@{}",
+                                String::from_utf8(former.to_vec())?,
+                                String::from_utf8(latter.to_vec())?
+                            );
+                            address
+                        };
+                        println!("from address: {}", from_addr);
+                        subject_str = String::from_utf8(e.subject.unwrap().to_vec()).unwrap();
+                        println!("subject: {}", subject_str);
+                    } else {
+                        println!("no envelope");
+                        break;
+                    }
                     let body = String::from_utf8(b.to_vec())?;
                     println!("body: {}", body);
-                    let validation = validate_email(&body.as_str(), &sender).await;
+                    let validation = validate_email_envelope(&body.as_str(), &sender, &from_addr.as_str(), &subject_str.as_str()).await;
                     match validation {
                         Ok((validation_status, salt_sender, salt_receiver, balance_request)) => {
                             // Calculate the nonce used in the filename
-                            let file_id = format!("({})_({})", salt_sender.unwrap(), salt_receiver.unwrap().as_str());
+                            let file_id = format!(
+                                "({})_({})",
+                                salt_sender.unwrap(),
+                                salt_receiver.unwrap().as_str()
+                            );
                             println!("File ID/Nonce: {}", file_id);
                             println!("Validation status: {:?}", validation_status);
                             let email_handle_result = match validation_status {

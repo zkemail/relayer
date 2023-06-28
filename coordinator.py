@@ -149,7 +149,7 @@ image = modal.Image.from_dockerhub(
     "aayushg0/zkemail-modal:modal",
     setup_dockerfile_commands=["RUN apt-get install -y python3 python-is-python3 python3-pip", "RUN cp -r /rapidsnark /root/rapidsnark",
                                "RUN cp -r /relayer /root/relayer",
-                               "RUN cp -r /zk-email-verify /root/zk-email-verify"]).pip_install_from_requirements("requirements.txt")
+                               "RUN cp -r /zk-email-verify /root/zk-email-verify"], force_build=True).pip_install_from_requirements("requirements.txt")
 stub = modal.Stub(image=image)
 
 

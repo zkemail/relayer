@@ -118,7 +118,7 @@ pub async fn get_provider(force_localhost: bool) -> Result<Provider<Http>, Error
         std::env::var("RPC_URL").expect("The RPC_URL environment variable must be set")
     };
     // Get the private key from the environment variable
-    println!("rpcurl: {}", rpcurl);
+    println!("Got provider for rpcurl: {}", rpcurl);
 
     let provider = Provider::<Http>::try_from(rpcurl)?;
     Ok(provider)
