@@ -173,6 +173,30 @@
   {
     "inputs": [
       {
+        "internalType": "string",
+        "name": "domain",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "getMailserverKey",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "uint256",
         "name": "salt",
         "type": "uint256"
@@ -256,7 +280,7 @@
   {
     "inputs": [
       {
-        "internalType": "contract Verifier",
+        "internalType": "contract Groth16Verifier",
         "name": "v",
         "type": "address"
       },
@@ -295,6 +319,19 @@
         "internalType": "bool",
         "name": "",
         "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "mailServer",
+    "outputs": [
+      {
+        "internalType": "contract MailServer",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -474,6 +511,29 @@
     "inputs": [
       {
         "internalType": "string",
+        "name": "domain",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "val",
+        "type": "uint256"
+      }
+    ],
+    "name": "setMailServerKey",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
         "name": "tokenName",
         "type": "string"
       },
@@ -532,9 +592,9 @@
         "type": "uint256[2]"
       },
       {
-        "internalType": "uint256[26]",
+        "internalType": "uint256[27]",
         "name": "signals",
-        "type": "uint256[26]"
+        "type": "uint256[27]"
       }
     ],
     "name": "transfer",
@@ -558,7 +618,7 @@
   {
     "inputs": [
       {
-        "internalType": "contract Verifier",
+        "internalType": "contract Groth16Verifier",
         "name": "v",
         "type": "address"
       }
@@ -573,7 +633,7 @@
     "name": "verifier",
     "outputs": [
       {
-        "internalType": "contract Verifier",
+        "internalType": "contract Groth16Verifier",
         "name": "",
         "type": "address"
       }

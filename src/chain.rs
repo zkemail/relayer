@@ -31,7 +31,7 @@ pub struct CircomCalldata {
     pi_a: [U256; 2],
     pi_b: [[U256; 2]; 2],
     pi_c: [U256; 2],
-    signals: [U256; 34],
+    signals: [U256; 27],
 }
 
 // Define a new function that takes optional arguments and provides default values
@@ -93,7 +93,7 @@ fn parse_files_into_calldata(
 
     println!("signals_vec: {:?}", signals_vec);
     
-    let signals: [U256; 34] = signals_vec
+    let signals: [U256; 27] = signals_vec
         .as_slice()
         .try_into()
         .unwrap();
