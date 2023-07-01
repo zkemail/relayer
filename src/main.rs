@@ -157,7 +157,7 @@ async fn run_relayer() -> Result<()> {
                                             {
                                                 Ok(balance) => {
                                                     let cloned_amount = amount.clone();
-                                                    println!("Balance: {}", balance);
+                                                    println!("Balance of address {}: {}", address, balance);
                                                     let amount_u256 =
                                                         U256::from_dec_str(&cloned_amount)
                                                             .unwrap_or_else(|_| U256::zero());
