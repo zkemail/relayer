@@ -63,6 +63,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "aliasable"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "250f629c0161ad8107cf89319e990051fae62832fd343083bea452d93e2205fd"
+
+[[package]]
 name = "android_system_properties"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -275,12 +281,6 @@ dependencies = [
  "ark-relations",
  "ark-std",
 ]
-
-[[package]]
-name = "arrayvec"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
 
 [[package]]
 name = "arrayvec"
@@ -576,12 +576,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4e3c5919066adf22df73762e50cffcde3a758f2a848b113b586d1f86728b673b"
 dependencies = [
  "iana-time-zone",
- "js-sys",
  "num-integer",
  "num-traits",
  "serde",
- "time 0.1.45",
- "wasm-bindgen",
  "winapi",
 ]
 
@@ -1321,7 +1318,7 @@ version = "2.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a5f8f85ba96698eab9a4782ed2215d0979b1981b99f1be0726c200ffdac22f5"
 dependencies = [
- "arrayvec 0.7.2",
+ "arrayvec",
  "bytes",
  "cargo_metadata",
  "chrono",
@@ -1740,7 +1737,7 @@ dependencies = [
  "cfg-if",
  "js-sys",
  "libc",
- "wasi 0.11.0+wasi-snapshot-preview1",
+ "wasi",
  "wasm-bindgen",
 ]
 
@@ -2009,27 +2006,28 @@ dependencies = [
 
 [[package]]
 name = "imap"
-version = "2.4.1"
+version = "3.0.0-alpha.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c617c55def8c42129e0dd503f11d7ee39d73f5c7e01eff55768b3879ff1d107d"
+checksum = "9cceec1222cd3c9b196695fe296dc6ddaa617e06b0c49742140ff9bbc87af628"
 dependencies = [
- "base64 0.13.1",
+ "base64 0.21.0",
  "bufstream",
  "chrono",
  "imap-proto",
  "lazy_static",
  "native-tls",
- "nom 5.1.2",
+ "nom",
+ "ouroboros",
  "regex",
 ]
 
 [[package]]
 name = "imap-proto"
-version = "0.10.2"
+version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16a6def1d5ac8975d70b3fd101d57953fe3278ef2ee5d7816cba54b1d1dfc22f"
+checksum = "f73b1b63179418b20aa81002d616c5f21b4ba257da9bca6989ea64dc573933e0"
 dependencies = [
- "nom 5.1.2",
+ "nom",
 ]
 
 [[package]]
@@ -2267,24 +2265,11 @@ dependencies = [
  "idna 0.3.0",
  "mime",
  "native-tls",
- "nom 7.1.3",
+ "nom",
  "once_cell",
  "quoted_printable",
  "socket2",
  "tokio",
-]
-
-[[package]]
-name = "lexical-core"
-version = "0.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6607c62aa161d23d17a9072cc5da0be67cdfc89d3afb1e8d9c842bebc2525ffe"
-dependencies = [
- "arrayvec 0.5.2",
- "bitflags",
- "cfg-if",
- "ryu",
- "static_assertions",
 ]
 
 [[package]]
@@ -2443,7 +2428,7 @@ checksum = "5b9d9a46eff5b4ff64b45a9e316a6d1e0bc719ef429cbec4dc630684212bfdf9"
 dependencies = [
  "libc",
  "log",
- "wasi 0.11.0+wasi-snapshot-preview1",
+ "wasi",
  "windows-sys 0.45.0",
 ]
 
@@ -2470,17 +2455,6 @@ name = "new_debug_unreachable"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4a24736216ec316047a1fc4252e27dabb04218aa4a3f37c6e7ddbf1f9782b54"
-
-[[package]]
-name = "nom"
-version = "5.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ffb4262d26ed83a1c0a33a38fe2bb15797329c85770da05e6b828ddb782627af"
-dependencies = [
- "lexical-core",
- "memchr",
- "version_check",
-]
 
 [[package]]
 name = "nom"
@@ -2597,7 +2571,7 @@ version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "786393f80485445794f6043fd3138854dd109cc6c4bd1a6383db304c9ce9b9ce"
 dependencies = [
- "arrayvec 0.7.2",
+ "arrayvec",
  "auto_impl",
  "bytes",
  "ethereum-types",
@@ -2667,12 +2641,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ceedf44fb00f2d1984b0bc98102627ce622e083e49a5bacdb3e514fa4238e267"
 
 [[package]]
+name = "ouroboros"
+version = "0.15.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1358bd1558bd2a083fed428ffeda486fbfb323e698cdda7794259d592ca72db"
+dependencies = [
+ "aliasable",
+ "ouroboros_macro",
+]
+
+[[package]]
+name = "ouroboros_macro"
+version = "0.15.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f7d21ccd03305a674437ee1248f3ab5d4b1db095cf1caf49f1713ddf61956b7"
+dependencies = [
+ "Inflector",
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "parity-scale-codec"
 version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "637935964ff85a605d114591d4d2c13c5d1ba2806dae97cea6bf180238a749ac"
 dependencies = [
- "arrayvec 0.7.2",
+ "arrayvec",
  "bitvec 1.0.1",
  "byte-slice-cast",
  "impl-trait-for-tuples",
@@ -3917,17 +3914,6 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.1.45"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b797afad3f312d1c66a56d11d0316f916356d11bd158fbc6ca6389ff6bf805a"
-dependencies = [
- "libc",
- "wasi 0.10.0+wasi-snapshot-preview1",
- "winapi",
-]
-
-[[package]]
-name = "time"
 version = "0.3.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd0cbfecb4d19b5ea75bb31ad904eb5b9fa13f21079c3b92017ebdf4999a5890"
@@ -4340,12 +4326,6 @@ dependencies = [
 
 [[package]]
 name = "wasi"
-version = "0.10.0+wasi-snapshot-preview1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a143597ca7c7793eff794def352d41792a93c481eb1042423ff7ff72ba2c31f"
-
-[[package]]
-name = "wasi"
 version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
@@ -4741,7 +4721,7 @@ dependencies = [
  "hmac",
  "pbkdf2 0.11.0",
  "sha1",
- "time 0.3.20",
+ "time",
  "zstd",
 ]
 

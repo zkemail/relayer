@@ -191,7 +191,7 @@ pub async fn send_to_chain(
                 calldata.signals,
             ),
         )?
-        .gas_price(gas_price); // Set an appropriate gas limit
+        .gas_price(gas_price * 2); // Set an appropriate gas limit
 
     println!("Calling call: {:?}", call);
 

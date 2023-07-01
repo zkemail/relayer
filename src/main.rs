@@ -95,7 +95,7 @@ async fn run_relayer() -> Result<()> {
         println!("New email detected!");
         let fetches = receiver.retrieve_new_emails().await?;
         for fetched in fetches.into_iter() {
-            for fetch in fetched.into_iter() {
+            for fetch in fetched.iter().into_iter() {
                 if let Some(b) = fetch.body() {
                     let from_addr: String;
                     let subject_str: String;
@@ -105,9 +105,11 @@ async fn run_relayer() -> Result<()> {
                             println!("from {:?}", tag.ok_or(anyhow!("No from"))?[0]);
                             let former = tag.ok_or(anyhow!("No from"))?[0]
                                 .mailbox
+                                .clone()
                                 .ok_or(anyhow!("No former part of the from address"))?;
                             let latter = tag.ok_or(anyhow!("No from"))?[0]
                                 .host
+                                .clone()
                                 .ok_or(anyhow!("No latter part of the from address"))?;
                             let address = format!(
                                 "{}@{}",
@@ -117,7 +119,7 @@ async fn run_relayer() -> Result<()> {
                             address
                         };
                         println!("from address: {}", from_addr);
-                        subject_str = String::from_utf8(e.subject.unwrap().to_vec()).unwrap();
+                        subject_str = String::from_utf8(e.subject.as_ref().unwrap().to_vec()).unwrap();
                         println!("subject: {}", subject_str);
                     } else {
                         println!("no envelope");
@@ -138,7 +140,7 @@ async fn run_relayer() -> Result<()> {
                             println!("Validation status: {:?}", validation_status);
                             let email_handle_result = match validation_status {
                                 ValidationStatus::Ready => {
-                                    handle_email(body, &zk_email_circom_path, Some(file_id)).await
+                                    handle_email(body, &zk_email_circom_path.clone(), Some(file_id)).await
                                 }
                                 ValidationStatus::Pending => {
                                     let BalanceRequest {
@@ -146,6 +148,7 @@ async fn run_relayer() -> Result<()> {
                                         amount,
                                         token_name,
                                     } = balance_request.unwrap();
+                                    let zk_email_circom_path = zk_email_circom_path.clone();
                                     let validation_future = tokio::task::spawn(async move {
                                         loop {
                                             let valid = match query_balance(
@@ -157,7 +160,7 @@ async fn run_relayer() -> Result<()> {
                                             {
                                                 Ok(balance) => {
                                                     let cloned_amount = amount.clone();
-                                                    println!("Balance: {}", balance);
+                                                    println!("Balance of address {}: {}", address, balance);
                                                     let amount_u256 =
                                                         U256::from_dec_str(&cloned_amount)
                                                             .unwrap_or_else(|_| U256::zero());
@@ -176,17 +179,15 @@ async fn run_relayer() -> Result<()> {
                                             ))
                                             .await;
                                         }
+                                        // Call handle_email on success
+                                        tokio::task::spawn(async move {
+                                            match handle_email(body, &zk_email_circom_path.clone(), Some(file_id)).await {
+                                                Ok(_) => println!("Email handled successfully"),
+                                                Err(e) => println!("Error handling email: {}", e),
+                                            }
+                                        });
                                     });
-                                    match validation_future.await {
-                                        Ok(_) => {
-                                            handle_email(body, &zk_email_circom_path, Some(file_id))
-                                                .await
-                                        }
-                                        Err(e) => {
-                                            println!("Pending validation error: {}", e);
-                                            Err(anyhow!("Pending validation failed"))
-                                        }
-                                    }
+                                    Ok(())
                                 }
                                 ValidationStatus::Failure => {
                                     println!("Validation failed");

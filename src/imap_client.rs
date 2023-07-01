@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use imap::types::{Fetch, ZeroCopy};
+use imap::types::{Fetch, Fetches};
 use imap::{Authenticator, Client, Session};
 use native_tls::{self, TlsStream};
 use oauth2::reqwest::async_http_client;
@@ -58,7 +58,9 @@ impl ImapClient {
         println!("Trying to construct...");
         let tls = native_tls::TlsConnector::builder().build()?;
         println!("Beginning connection process to IMAP server...");
-        let client = imap::connect((domain_name, port), domain_name, &tls)?;
+        let client = imap::ClientBuilder::new(domain_name, port)
+            .native_tls()
+            .expect("Could not connect to imap server");
         println!("IMAP client connected to {:?} {:?}", domain_name, client);
         let mut imap_session = match auth.clone() {
             IMAPAuth::Password { id, password } => client.login(id, password).map_err(|e| e.0),
@@ -102,6 +104,11 @@ impl ImapClient {
                 client.authenticate("XOAUTH2", &oauthed).map_err(|e| e.0)
             }
         }?;
+        // Turn on debug output so we can see the actual traffic coming
+        // from the server and how it is handled in our callback.
+        // This wouldn't be turned on in a production build, but is helpful
+        // in examples and for debugging.
+        imap_session.debug = true;
         imap_session.select("INBOX")?;
         Ok(Self {
             imap_session,
@@ -123,8 +130,11 @@ impl ImapClient {
     }
 
     async fn idle_wait(&mut self) -> Result<()> {
-        let idle = self.imap_session.idle()?;
-        idle.wait()?;
+        let idle_result = self.imap_session.idle().wait_while(|response| {false});
+        match idle_result {
+            Ok(reason) => println!("IDLE finished normally {:?}", reason),
+            Err(e) => println!("IDLE finished with error {:?}", e),
+        };
         Ok(())
     }
 
@@ -153,7 +163,7 @@ impl ImapClient {
     }
 
 
-    pub async fn retrieve_new_emails(&mut self) -> Result<Vec<ZeroCopy<Vec<Fetch>>>> {
+    pub async fn retrieve_new_emails(&mut self) -> Result<Vec<Fetches>> {
         loop {
             match self.imap_session.uid_search("UNSEEN") {
                 Ok(uids) => {
@@ -169,7 +179,9 @@ impl ImapClient {
                 }
                 Err(e) => {
                     println!("Connection reset, reconnecting...");
-                    self.reconnect().await?;
+                    if let Err(e) = self.reconnect().await {
+                        return Err(e);
+                    }
                 }
             }
         }
