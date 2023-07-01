@@ -17,7 +17,7 @@ impl EmailProcesser {
 
     fn process_one_fetched(fetch: Fetch) -> Result<()> {
         let envelope = fetch.envelope().ok_or(anyhow!("No envelope"))?;
-        let subject = envelope.subject.ok_or(anyhow!("No subject"))?;
+        let subject = envelope.subject.as_ref().ok_or(anyhow!("No subject"))?;
         let subject_str = String::from_utf8(subject.to_vec())?;
         let subject_regex = Regex::new(Self::SUBJECT_REGEX)?;
         let manipulation_id = subject_regex
