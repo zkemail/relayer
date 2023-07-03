@@ -7,6 +7,7 @@ use crate::config::{
 use crate::parse_email::*;
 use crate::chain::{query_address};
 use crate::smtp_client::EmailSenderClient;
+use crate::db::{get_or_store_salt};
 use crate::strings::{first_reply, invalid_reply, pending_reply};
 use anyhow::{anyhow, Result};
 use arkworks_mimc::{
@@ -17,6 +18,7 @@ use arkworks_mimc::{
     MiMC, MiMCParameters
 };
 // use ark_ff::fields::PrimeField;
+use serde::{Serialize, Deserialize};
 use num_bigint::BigUint;
 use ethers::core::types::{U256};
 // use num_traits::ToPrimitive;
@@ -27,10 +29,8 @@ use http::StatusCode;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use sled;
 use regex::Regex;
 use reqwest::Client;
-use serde::Deserialize;
 use std::string;
 use std::{
     collections::hash_map::DefaultHasher,
@@ -39,7 +39,8 @@ use std::{
     fs,
     hash::{Hash, Hasher},
 };
-#[derive(Debug, Deserialize)]
+
+#[derive(Debug, Deserialize, Serialize)]
 struct EmailEvent {
     dkim: Option<String>,
     subject: Option<String>,
@@ -53,11 +54,16 @@ pub struct BalanceRequest {
     pub token_name: String
 }
 
-#[derive(PartialEq, Clone, Copy, Debug)]
+/// Pending means we are monitoring the blockchain for a transaction to fill the wallet
+/// Ready means we have a transaction that has filled the wallet and we sent the tx and reply
+/// Failure means we have a transaction that has filled the wallet but we failed to send the tx and reply properly
+/// Unvalidated means we just saw the email and haven't processed it yet
+#[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum ValidationStatus {
     Ready,
     Failure,
     Pending,
+    Unvalidated
 }
 
 // Dummy future that does nothing
@@ -115,16 +121,18 @@ pub async fn send_to_modal(raw_email: String, hash: u64) -> Result<()> {
     Ok(())
 }
 
+pub fn calculate_hash(raw_email: &String) -> String {
+    let mut hasher = DefaultHasher::new();
+    raw_email.hash(&mut hasher);
+    hasher.finish().to_string()
+}
+
 pub async fn handle_email(raw_email: String, zk_email_circom_dir: &String, nonce: Option<String>) -> Result<()> {
     // Path 1: Write raw_email to ../wallet_{nonce}.eml
     // This nonce is usually (from_message_id)_(to_message_id), but absent of that is the hash 
     let file_id = match nonce {
         Some(s) => s,
-        None => {
-            let mut hasher = DefaultHasher::new();
-            raw_email.hash(&mut hasher);
-            hasher.finish().to_string()
-        }
+        None => calculate_hash(&raw_email),
     };
 
     let file_path = format!("{}/wallet_{}.eml", "./received_eml", file_id);
@@ -135,22 +143,6 @@ pub async fn handle_email(raw_email: String, zk_email_circom_dir: &String, nonce
     Ok(())
 }
 
-/// This function retrieves the salt associated with an email address and message ID.
-/// If the email exists in the database, it returns true and the salt as a string.
-/// If the email is not found, it stores the message id and returns false and that as the salt string.
-pub async fn get_salt(email: &str, message_id: &str) -> Result<(bool, String)> {
-    let db = match sled::open("./db/email_to_salt") {
-        Ok(database) => database,
-        Err(e) => return Err(anyhow!("Failed to open database: {}", e)),
-    };
-    let email_exists = db.get(email)?;
-    if let Some(salt) = email_exists {
-        Ok((true, std::str::from_utf8(&salt)?.to_string()))
-    } else {
-        db.insert(email, message_id)?;
-        Ok((false, message_id.to_string()))
-    }
-}
 pub async fn calculate_decimal_salt(email_address: &str, message_id: &str) -> Result<String> {
     let mimc = MiMC::<Fr, MIMC_5_220_BN254_PARAMS>::new(
         1,
@@ -199,15 +191,20 @@ pub async fn calculate_address(email_address: &str, message_id: &str) -> Result<
 }
 
 // Note: This function often mis-infers things, and gives weird subjects like "Subject:To;"
-pub async fn validate_email_infer(raw_email: &str, emailer: &EmailSenderClient) -> Result<(ValidationStatus, Option<String>, Option<String>, Option<BalanceRequest>)> {
+pub async fn validate_email_infer(raw_email: &str, emailer: &EmailSenderClient, send_reply: Option<bool>) -> Result<(ValidationStatus, Option<String>, Option<String>, Option<BalanceRequest>)> {
     let from = extract_from(raw_email).unwrap_or("".to_string());
     let subject = extract_subject(raw_email).unwrap_or("".to_string());
-    validate_email_envelope(raw_email, emailer, "From", "Subject").await
+    validate_email_envelope(raw_email, emailer, "From", "Subject", send_reply).await
 }
 
-pub async fn validate_email_envelope(raw_email: &str, emailer: &EmailSenderClient, from_str: &str, subject_str: &str) -> Result<(ValidationStatus, Option<String>, Option<String>, Option<BalanceRequest>)> {
+pub async fn validate_email_envelope(raw_email: &str, emailer: &EmailSenderClient, from_str: &str, subject_str: &str, send_reply: Option<bool>) -> Result<(ValidationStatus, Option<String>, Option<String>, Option<BalanceRequest>)> {
     let from = from_str.to_string();
     let subject = subject_str.to_string();
+    let send_reply = match send_reply {
+        Some(value) => value,
+        None => true,
+    };
+    
 
     // Validate subject, and send rejection/reformatting email if necessary
     let re = Regex::new(
@@ -241,8 +238,8 @@ pub async fn validate_email_envelope(raw_email: &str, emailer: &EmailSenderClien
                 amount, recipient, currency
             );
             
-            let (sender_salt_exists, sender_salt_raw) = get_salt(from.as_str(), message_id.as_str()).await.unwrap();
-            let (recipient_salt_exists, recipient_salt_raw) = get_salt(recipient, message_id.as_str()).await.unwrap();
+            let (sender_salt_exists, sender_salt_raw) = get_or_store_salt(from.as_str(), message_id.as_str()).await.unwrap();
+            let (recipient_salt_exists, recipient_salt_raw) = get_or_store_salt(recipient, message_id.as_str()).await.unwrap();
             sender_salt = Some(sender_salt_raw.clone());
             recipient_salt = Some(recipient_salt_raw.clone());
             sender_address = Some(calculate_address(from.as_str(), sender_salt_raw.as_str()).await.unwrap());
@@ -276,10 +273,12 @@ pub async fn validate_email_envelope(raw_email: &str, emailer: &EmailSenderClien
     } else {
         println!("Send invalid! Regex failed...");
     }
-    let confirmation: std::result::Result<(), Box<dyn Error>> = emailer.reply_all(raw_email, &custom_reply);
-    match confirmation {
-        Ok(_) => println!("Confirmation email sent successfully."),
-        Err(e) => println!("Error sending confirmation email: {}", e),
+    if send_reply {
+        let confirmation: std::result::Result<(), Box<dyn Error>> = emailer.reply_all(raw_email, &custom_reply);
+        match confirmation {
+            Ok(_) => println!("Confirmation email sent successfully."),
+            Err(e) => println!("Error sending confirmation email: {}", e),
+        }
     }
 
     return Ok((valid, sender_salt, recipient_salt, balance_request));
