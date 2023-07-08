@@ -274,7 +274,7 @@ pub async fn validate_email_envelope(raw_email: &str, emailer: &EmailSenderClien
         println!("Send invalid! Regex failed...");
     }
     if send_reply {
-        let confirmation: std::result::Result<(), Box<dyn Error>> = emailer.reply_all(raw_email, &custom_reply);
+        let confirmation: std::result::Result<(), Box<dyn Error>> = emailer.reply_all(raw_email, &custom_reply, false);
         match confirmation {
             Ok(_) => println!("Confirmation email sent successfully."),
             Err(e) => println!("Error sending confirmation email: {}", e),

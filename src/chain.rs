@@ -199,7 +199,7 @@ pub async fn send_to_chain(
         Ok(tx) => tx,
         Err(e) => {
             println!("Error: {:?}", e);
-            reply_with_message(nonce, "Error sending transaction. Most likely your email domain is not supported (must be @gmail.com, @hotmail.com, @ethereum.org, or @skiff.com).");
+            reply_with_message(nonce, "Error sending transaction. Most likely your email domain is not supported (must be @gmail.com, @hotmail.com, @ethereum.org, or @skiff.com).", false);
             println!("Error bytes: {:?}", e.as_revert());
             return Err(e.into());
         }
@@ -216,10 +216,10 @@ fn reply_with_etherscan(nonce: &str, tx_hash: H256) {
         etherscan_url
     );
     println!("Replying with confirmation...{}", reply);
-    reply_with_message(nonce, &reply);
+    reply_with_message(nonce, &reply, true);
 }
 
-fn reply_with_message(nonce: &str, reply: &str) {
+fn reply_with_message(nonce: &str, reply: &str, send_to_recipient: bool) {
     dotenv().ok();
     let mut sender: EmailSenderClient = EmailSenderClient::new(
         env::var(LOGIN_ID_KEY).unwrap().as_str(),
@@ -230,7 +230,7 @@ fn reply_with_message(nonce: &str, reply: &str) {
     let eml_var = env::var(INCOMING_EML_PATH).unwrap();
 
     let raw_email = fs::read_to_string(format!("{}/wallet_{}.eml", eml_var, nonce)).unwrap();
-    let confirmation = sender.reply_all(&raw_email, &reply);
+    let confirmation = sender.reply_all(&raw_email, &reply, send_to_recipient);
 }
 
 pub async fn query_address(
