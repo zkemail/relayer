@@ -10,11 +10,18 @@ use anyhow::{anyhow, Result};
 /// The backoff starts at 1 second and doubles after each failed attempt, up to 8 seconds.
 /// After reaching 8 seconds, the backoff increases linearly by 1 second after each failed attempt.
 /// The function gives up and returns an error if the database cannot be opened after 15 seconds.
+// TODO: This is very blocking and not concurrency friendly. Implement less blocking db.
 
 pub fn get_db(path: &str) -> Result<Db, Error> {
     let mut db = sled::open(path);
     let mut backoff = 1;
     while db.is_err() {
+        // Give up
+        if (backoff == 15) {
+            return db;
+        }
+
+        println!("Backing off of db access for {} db with {} seconds!", path, backoff);
         std::thread::sleep(std::time::Duration::from_secs(backoff));
         db = sled::open(path);
 
@@ -23,9 +30,6 @@ pub fn get_db(path: &str) -> Result<Db, Error> {
             backoff *= 2; // Exponential backoff
         } else {
             backoff += 1;
-        }
-        if (backoff == 15 && db.is_err()) {
-            return db;
         }
     }
     db
