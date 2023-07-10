@@ -35,22 +35,76 @@ pub fn get_db(path: &str) -> Result<Db, Error> {
     db
 }
 
-/// This function retrieves the salt associated with an email address and message ID.
-/// If the email exists in the database, it returns true and the salt as a string.
-/// If the email is not found, it stores the message id and returns false and that as the salt string.
+/// This function migrates everything in email_to_salt to email_to_salt_and_nonce where the nonce is 0.
+pub async fn migrate_email_dbs() -> Result<()> {
+    let db_old = match get_db("./db/email_to_salt") {
+        Ok(database) => database,
+        Err(e) => return Err(anyhow!("Failed to open old database: {}", e)),
+    };
+    let db_new = match get_db("./db/email_to_salt_and_nonce") {
+        Ok(database) => database,
+        Err(e) => return Err(anyhow!("Failed to open new database: {}", e)),
+    };
+
+    for result in db_old.iter() {
+        let (email, salt) = result?;
+        let email_str = String::from_utf8(email.to_vec())?;
+        let salt_str: String = serde_json::from_slice(&salt)?;
+        let value = serde_json::to_vec(&(salt_str, 0))?;
+        db_new.insert(email_str, value)?;
+    }
+
+    Ok(())
+}
+
+
+/// This function retrieves the salt and nonce associated with an email address.
+/// If the email exists in the database, it returns true, the salt, and the nonce as a string.
+/// If the email is not found, it stores the message id as the salt and a nonce of 0, and returns false, the salt, and the nonce.
+/// If the increment_nonce argument is true, it increments the nonce by 1.
 pub async fn get_or_store_salt(email: &str, message_id: &str) -> Result<(bool, String)> {
     let db = match get_db("./db/email_to_salt") {
         Ok(database) => database,
         Err(e) => return Err(anyhow!("Failed to open database: {}", e)),
     };
     let email_exists = db.get(email)?;
-    if let Some(salt) = email_exists {
-        Ok((true, std::str::from_utf8(&salt)?.to_string()))
+    if let Some(value) = email_exists {
+        let salt: String = serde_json::from_slice(&value)?;
+        Ok((true, salt))
     } else {
-        db.insert(email, message_id)?;
+
+        let value = serde_json::to_vec(&(message_id.to_string()))?;
+        db.insert(email, value)?;
         Ok((false, message_id.to_string()))
     }
 }
+
+/// This function retrieves the salt and nonce associated with an email address.
+/// If the email exists in the database, it returns true, the salt, and the nonce as a string.
+/// If the email is not found, it stores the message id as the salt and a nonce of 0, and returns false, the salt, and the nonce.
+/// If the increment_nonce argument is true, it increments the nonce by 1.
+// pub async fn get_or_store_salt_and_nonce(email: &str, message_id: &str, increment_nonce: bool) -> Result<(bool, String, u64)> {
+//     let db = match get_db("./db/email_to_salt_and_nonce") {
+//         Ok(database) => database,
+//         Err(e) => return Err(anyhow!("Failed to open database: {}", e)),
+//     };
+//     let email_exists = db.get(email)?;
+//     if let Some(value) = email_exists {
+//         let (salt, mut nonce): (String, u64) = serde_json::from_slice(&value)?;
+//         if increment_nonce {
+//             nonce += 1;
+//             let new_value = serde_json::to_vec(&(salt.clone(), nonce))?;
+//             db.insert(email, new_value)?;
+//         }
+//         Ok((true, salt, nonce))
+//     } else {
+
+//         let value = serde_json::to_vec(&(message_id.to_string(), 0))?;
+//         db.insert(email, value)?;
+//         Ok((false, message_id.to_string(), 0))
+//     }
+// }
+
 
 /// Define the EmailData struct that the database will store.
 /// Raw email is the raw email body as a string (including headers)

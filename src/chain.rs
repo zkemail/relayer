@@ -7,10 +7,11 @@ use ethers::abi::Abi;
 // use ethers::contract::ContractError;
 use ethers::prelude::*;
 use anyhow::{Error};
-use ethers::core::types::{Address, U256, H160};
+use ethers::core::types::{Address, U256, H160, H256};
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
 // use hex;
+use crate::strings::{reply_with_etherscan};
 use crate::config::{INCOMING_EML_PATH, LOGIN_ID_KEY, LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY};
 use crate::smtp_client::EmailSenderClient;
 // use hex_literal::hex;
@@ -21,11 +22,14 @@ use std::convert::TryFrom;
 use std::env;
 // use std::error::Error;
 use std::fs;
+// use std::sync::Arc;
 // use std::borrow::Borrow;
 use std::str::{self, FromStr};
 // use rustc_hex::{FromHex, ToHex};
 // use std::sync::Arc;
 
+pub type SignerType = SignerMiddleware<Provider<Http>, Wallet<SigningKey>>;
+pub type ClientType = NonceManagerMiddleware<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>;
 #[derive(Debug, Clone)]
 pub struct CircomCalldata {
     pi_a: [U256; 2],
@@ -150,7 +154,7 @@ pub fn get_abi(abi_type: AbiType) -> Result<Abi, Error> {
     Ok(abi)
 }
 
-pub async fn get_signer(force_localhost: bool) -> Result<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>, Error> {
+pub async fn get_signer(force_localhost: bool) -> Result<SignerType, Error> {
     let chain_id: u64 = std::env::var("CHAIN_ID")
         .expect("The CHAIN_ID environment variable must be set")
         .parse()?;
@@ -158,8 +162,29 @@ pub async fn get_signer(force_localhost: bool) -> Result<SignerMiddleware<Provid
     let private_key_hex =
         std::env::var("PRIVATE_KEY").expect("The PRIVATE_KEY environment variable must be set");
     let wallet: LocalWallet = LocalWallet::from_str(&private_key_hex)?;
+    let address = wallet.address();
     let signer = SignerMiddleware::new(provider, wallet.with_chain_id(chain_id));
     Ok(signer)
+}
+
+pub async fn get_pending_tx_count(force_localhost: bool, wallet_address: H160) -> usize {
+    // Query the current nonce of the account
+    let provider = (get_provider(force_localhost).await).unwrap();
+    let current_nonce = provider.get_transaction_count(wallet_address, None).await.unwrap();
+
+    // Call the txpool_content method
+    let txpool_content: ethers::core::types::TxpoolContent = provider.request("txpool_content", ()).await.unwrap();
+
+    // Iterate over the pending transactions and count them
+    let mut pending_count = 0;
+    for (from_address, txs) in txpool_content.pending {
+        // If the transaction is from the given address, increment the pending_count
+        if from_address == wallet_address {
+            pending_count += txs.len();
+        }
+    }
+    println!("Pending transactions for {}: {}", wallet_address, pending_count);
+    pending_count
 }
 
 // local: bool - whether or not to send to a local RPC
@@ -172,14 +197,31 @@ pub async fn send_to_chain(
     // Load environment variables from the .env file
     dotenv().ok();
     let contract_address: Address = std::env::var("CONTRACT_ADDRESS").unwrap().parse()?;
-    let contract = ContractInstance::new(contract_address, get_abi(AbiType::Wallet).unwrap(), get_signer(force_localhost).await.unwrap());
-    let gas_price = get_gas_price(force_localhost).await.unwrap();
+    let signer_raw = get_signer(force_localhost).await.unwrap();
+    let sender_address = signer_raw.address().clone();
+    let signer = signer_raw.nonce_manager(sender_address);
 
+    let gas_price = get_gas_price(force_localhost).await.unwrap();
+    
     // Read proof and public parameters from JSON files
     let calldata = get_calldata(Some(dir), Some(nonce)).unwrap();
-
+    
+    // Initialize NonceManagerMiddleware
+    // let nonce_manager = NonceManagerMiddleware::new(signer, sender_address);
+        // let contract: ContractInstance<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>, Abi> = 
+        // ContractInstance::new(contract_address, get_abi(AbiType::Wallet).unwrap(), signer);
+    let contract = ContractInstance::<_, ClientType>::new(contract_address, get_abi(AbiType::Wallet).unwrap(), &signer);
+    // let contract = ContractInstance::new(contract_address, get_abi(AbiType::Wallet).unwrap(), signer);
+    
+    signer.initialize_nonce(None).await?;
+    
+    let pending_txes = get_pending_tx_count(force_localhost, sender_address).await;
+    for _ in 0..pending_txes {
+        let mut nonce = signer.next();
+    }
+    
     println!("Sending transaction with gas price {:?}...", gas_price);
-
+    
     // Call the transfer function
     let call = contract
         .method::<_, ()>(
@@ -191,10 +233,11 @@ pub async fn send_to_chain(
                 calldata.signals,
             ),
         )?
-        .gas_price(gas_price * 2); // Set an appropriate gas limit
+        .gas_price(gas_price * 2);
 
     println!("Calling call: {:?}", call);
 
+    // Send the transaction with the updated nonce
     let pending_tx = match call.send().await {
         Ok(tx) => tx,
         Err(e) => {
@@ -205,18 +248,9 @@ pub async fn send_to_chain(
         }
     };
     println!("Transaction hash: {:?}", pending_tx);
-    reply_with_etherscan(nonce, pending_tx.tx_hash());
+    let etherscan_reply = reply_with_etherscan(pending_tx.tx_hash());
+    reply_with_message(nonce, &etherscan_reply, true);
     Ok(())
-}
-
-fn reply_with_etherscan(nonce: &str, tx_hash: H256) {
-    let etherscan_url = format!("https://goerli.etherscan.io/tx/0x{:x}", tx_hash);
-    let reply = format!(
-        "Transaction sent! View Etherscan confirmation: {}. Spot the transfer of the ERC20 for the amount you specified.",
-        etherscan_url
-    );
-    println!("Replying with confirmation...{}", reply);
-    reply_with_message(nonce, &reply, true);
 }
 
 fn reply_with_message(nonce: &str, reply: &str, send_to_recipient: bool) {

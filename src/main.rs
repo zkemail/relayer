@@ -8,13 +8,13 @@ pub mod db;
 pub mod smtp_client;
 pub mod strings;
 use anyhow::{anyhow, Result};
-use chain::query_balance;
+use chain::{query_balance};
 use config::{
     IMAP_AUTH_TYPE_KEY, IMAP_AUTH_URL_KEY, IMAP_CLIENT_ID_KEY, IMAP_CLIENT_SECRET_KEY,
     IMAP_DOMAIN_NAME_KEY, IMAP_PORT_KEY, IMAP_REDIRECT_URL_KEY, IMAP_TOKEN_URL_KEY, LOGIN_ID_KEY,
     LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY, SMTP_PORT_KEY, ZK_EMAIL_PATH_KEY,
 };
-use db::{EmailData, get_or_store_salt, set_email_state, update_email_state_with_raw_email, update_email_state_with_hash, get_pending_and_unvalidated_emails, get_email_data, get_email_data_from_email};
+use db::{EmailData, migrate_email_dbs, set_email_state, update_email_state_with_raw_email, update_email_state_with_hash, get_pending_and_unvalidated_emails, get_email_data, get_email_data_from_email};
 use coordinator::{calculate_address, BalanceRequest, calculate_hash, handle_email, send_to_modal, validate_email_envelope, ValidationStatus};
 use core::future::Future;
 use dotenv::dotenv;
@@ -48,6 +48,11 @@ async fn main() -> Result<()> {
             }
             "relayer" => {
                 run_relayer().await?;
+                Ok(())
+            }
+            "migrate" => {
+                // Unused for now
+                migrate_email_dbs().await?;
                 Ok(())
             }
             _ => Err(anyhow!("Invalid function! Use either 'chain' or 'relayer'")),
