@@ -287,7 +287,7 @@ pub async fn query_balance(
     force_localhost: bool,
     user_address: &str,
     token_name: &str,
-) -> Result<U256, Error> {
+) -> Result<f64, Error> {
     // Load environment variables from the .env file
     dotenv().ok();
     let abi = get_abi(AbiType::Wallet)?;
@@ -297,14 +297,22 @@ pub async fn query_balance(
     let erc20_address_method = logic_contract.method::<_, Address>("getTokenAddress", "DAI".to_owned())?;
     let erc20_address = erc20_address_method.call().await?;
     let erc_contract = ContractInstance::new(erc20_address, get_abi(AbiType::ERC20).unwrap(), get_signer(force_localhost).await.unwrap());
-
-    // Call the balanceOf function on the ERC20 contract
-    let balance: U256 = erc_contract
+    // Call the balanceOf function on the ERC20 contract to get the raw balance in wei
+    let raw_balance: U256 = erc_contract
         .method::<_, U256>("balanceOf", Address::from_str(user_address).unwrap())
         .unwrap()
         .call()
         .await?;
 
+    // Call the decimals function on the ERC20 contract to get the decimal count
+    let decimals: U256 = erc_contract
+        .method::<_, U256>("decimals", ())
+        .unwrap()
+        .call()
+        .await?;
+
+    // Calculate the balance in tokens by dividing the raw balance by 10 to the power of the decimal count
+    let balance: f64 = raw_balance.low_u64() as f64 / 10f64.powi(decimals.as_u32() as i32);
     Ok(balance)
 }
 
@@ -319,7 +327,7 @@ mod test {
         
         match balance {
             Ok(bal) => {
-                assert!(bal > U256::zero(), "Balance must be more than 0");
+                assert!(bal > 0.0, "Balance must be more than 0");
             },
             Err(e) => {
                 println!("Error: {:?}", e);
