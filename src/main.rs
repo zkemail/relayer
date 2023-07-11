@@ -254,10 +254,10 @@ async fn process_email(email_data: &EmailData, sender: &EmailSenderClient, zk_em
                                 Ok(balance) => {
                                     let cloned_amount = amount.clone();
                                     println!("Balance of address {}: {}", address, balance);
-                                    let amount_u256 =
-                                        U256::from_dec_str(&cloned_amount)
-                                            .unwrap_or_else(|_| U256::zero());
-                                    balance >= amount_u256
+                                    let amount_f64 =
+                                        cloned_amount.parse::<f64>()
+                                            .unwrap_or_else(|_| 0.0);
+                                    balance >= amount_f64
                                 }
                                 Err(error) => {
                                     println!("error: {}", error);

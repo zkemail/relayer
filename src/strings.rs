@@ -41,7 +41,7 @@ pub async fn pending_reply(address: &str, amount: &str, currency: &str, recipien
     .await {
         Ok(balance) => {
             enough_balance = balance >= amount.parse().unwrap();
-            let remaining = balance - U256::from_dec_str(amount).unwrap();
+            let remaining = balance - amount.parse::<f64>().unwrap();
             
             let enough_balance_str = if enough_balance {
                 format!("Your wallet has {} {}. The transaction will send {} {} to {} and your remaining balance will be {} {}", balance, currency, amount, currency, recipient, remaining, currency)
