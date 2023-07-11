@@ -129,7 +129,7 @@ pub fn calculate_hash(raw_email: &String) -> String {
 
 pub async fn handle_email(raw_email: String, zk_email_circom_dir: &String, nonce: Option<String>) -> Result<()> {
     // Path 1: Write raw_email to ../wallet_{nonce}.eml
-    // This nonce is usually (from_message_id)_(to_message_id), but absent of that is the hash 
+    // This nonce is usually (from_message_id)_(to_message_id)_(hash), but absent of that is the hash 
     let file_id = match nonce {
         Some(s) => s,
         None => calculate_hash(&raw_email),
