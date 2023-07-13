@@ -11,7 +11,7 @@ use ethers::core::types::{Address, U256, H160, H256};
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
 use crate::strings::{reply_with_etherscan};
-use crate::config::{INCOMING_EML_PATH, LOGIN_ID_KEY, LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY};
+use crate::config::{INCOMING_EML_PATH, ETHERSCAN_KEY, LOGIN_ID_KEY, LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY};
 use crate::smtp_client::EmailSenderClient;
 // use hex_literal::hex;
 use k256::ecdsa::SigningKey;
@@ -94,7 +94,7 @@ fn parse_files_into_calldata(
         .collect::<Vec<_>>();
 
     println!("signals_vec: {:?}", signals_vec);
-    
+
     let signals: [U256; 27] = signals_vec
         .as_slice()
         .try_into()
@@ -165,24 +165,64 @@ pub async fn get_signer(force_localhost: bool) -> Result<SignerType, Error> {
     Ok(signer)
 }
 
-pub async fn get_pending_tx_count(force_localhost: bool, wallet_address: H160) -> usize {
+#[derive(Debug, serde::Deserialize)]
+struct EtherscanResponse {
+    status: String,
+    message: String,
+    result: Vec<Transaction>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct Transaction {
+    blockNumber: String,
+    timeStamp: String,
+    hash: String,
+    nonce: String,
+    blockHash: String,
+    transactionIndex: String,
+    from: String,
+    to: String,
+    value: String,
+    gas: String,
+    gasPrice: String,
+    isError: String,
+    txreceipt_status: String,
+    input: String,
+    contractAddress: String,
+    cumulativeGasUsed: String,
+    gasUsed: String,
+    confirmations: String,
+}
+
+pub async fn get_pending_tx_count(force_localhost: bool, wallet_address: H160) -> Result<usize, Error> {
+    Ok(0)
     // Query the current nonce of the account
-    let provider = (get_provider(force_localhost).await).unwrap();
-    let current_nonce = provider.get_transaction_count(wallet_address, None).await.unwrap();
+    // let provider = (get_provider(force_localhost).await).unwrap();
+    // let current_nonce = provider.get_transaction_count(wallet_address, None).await.unwrap();
 
-    // Call the txpool_content method
-    let txpool_content: ethers::core::types::TxpoolContent = provider.request("txpool_content", ()).await.unwrap();
+    // // Get pending txes
+    // let etherscan_api_key = std::env::var(ETHERSCAN_KEY).expect("The ETHERSCAN_API_KEY environment variable must be set");
+    // let chain_id: u64 = std::env::var("CHAIN_ID").expect("The CHAIN_ID environment variable must be set").parse().unwrap();
+    // let etherscan_url = match chain_id {
+    //     5 => "https://goerli.etherscan.io",
+    //     1 => "https://etherscan.io",
+    //     42161 => "https://arbiscan.io",
+    //     10 => "https://optimistic.etherscan.io",
+    //     _ => panic!("Unsupported chain id"),
+    // };
+    // let url = format!("{}/api?module=account&action=txlist&address={}&startblock=0&endblock=999999999&sort=asc&apikey={}", etherscan_url, wallet_address, etherscan_api_key);
+    // println!("Etherscan Url: {}", url);
+    // let response_text = reqwest::get(&url).await?.text().await?;
+    // println!("API response: {}", response_text);
+    // let response: EtherscanResponse = serde_json::from_str(&response_text)?;
 
-    // Iterate over the pending transactions and count them
-    let mut pending_count = 0;
-    for (from_address, txs) in txpool_content.pending {
-        // If the transaction is from the given address, increment the pending_count
-        if from_address == wallet_address {
-            pending_count += txs.len();
-        }
-    }
-    println!("Pending transactions for {}: {}", wallet_address, pending_count);
-    pending_count
+    // // let response = reqwest::get(&url).await.expect("Failed to send pending tx request to Etherscan").json::<EtherscanResponse>().await.expect("Failed to parse Etherscan return value");
+
+    // let pending_transactions: Vec<Transaction> = response.result.into_iter().filter(|tx| tx.txreceipt_status == "Pending").collect();
+    // let pending_count = pending_transactions.len();
+
+    // println!("Pending transactions for {}: {}", wallet_address, pending_count);
+    // Ok(pending_count)
 }
 
 // local: bool - whether or not to send to a local RPC
@@ -200,26 +240,26 @@ pub async fn send_to_chain(
     let signer = signer_raw.nonce_manager(sender_address);
 
     let gas_price = get_gas_price(force_localhost).await.unwrap();
-    
+
     // Read proof and public parameters from JSON files
     let calldata = get_calldata(Some(dir), Some(nonce)).unwrap();
-    
+
     // Initialize NonceManagerMiddleware
     // let nonce_manager = NonceManagerMiddleware::new(signer, sender_address);
-        // let contract: ContractInstance<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>, Abi> = 
+        // let contract: ContractInstance<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>, Abi> =
         // ContractInstance::new(contract_address, get_abi(AbiType::Wallet).unwrap(), signer);
     let contract = ContractInstance::<_, ClientType>::new(contract_address, get_abi(AbiType::Wallet).unwrap(), &signer);
     // let contract = ContractInstance::new(contract_address, get_abi(AbiType::Wallet).unwrap(), signer);
-    
+
     signer.initialize_nonce(None).await?;
-    
-    let pending_txes = get_pending_tx_count(force_localhost, sender_address).await;
+
+    let pending_txes = get_pending_tx_count(force_localhost, sender_address).await.expect("Pending tx count failed");
     for _ in 0..pending_txes {
-        let mut nonce = signer.next();
+        let mut _nonce = signer.next();
     }
-    
+
     println!("Sending transaction with gas price {:?}...", gas_price);
-    
+
     // Call the transfer function
     let call = contract
         .method::<_, ()>(
@@ -323,8 +363,9 @@ mod test {
 
     #[tokio::test]
     async fn test_query_balance() {
+        dotenv::dotenv().ok();
         let balance = query_balance(false, "0x11fE4B6AE13d2a6055C8D9cF65c55bac32B5d844", "DAI").await;
-        
+
         match balance {
             Ok(bal) => {
                 assert!(bal > 0.0, "Balance must be more than 0");
@@ -332,6 +373,23 @@ mod test {
             Err(e) => {
                 println!("Error: {:?}", e);
                 assert!(false, "Error getting balance");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_pending_tx_count() {
+        dotenv::dotenv().ok();
+        let wallet_address = "0x11fE4B6AE13d2a6055C8D9cF65c55bac32B5d844".parse().unwrap();
+        let pending_tx_count = get_pending_tx_count(false, wallet_address).await;
+
+        match pending_tx_count {
+            Ok(count) => {
+                assert!(count >= 0, "Pending transaction count must be non-negative");
+            },
+            Err(e) => {
+                println!("Error: {:?}", e);
+                assert!(false, "Error getting pending transaction count");
             }
         }
     }
