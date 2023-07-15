@@ -20,6 +20,13 @@ nonce=$1
 zk_email_path="${MODAL_ZK_EMAIL_CIRCOM_PATH}"
 HOME="${MODAL_ZK_EMAIL_CIRCOM_PATH}/../"
 wallet_eml_dir_path=$MODAL_INCOMING_EML_PATH
+
+if [ "$PROVER_TYPE" = "local" ]; then
+    zk_email_path=$LOCAL_ZK_EMAIL_CIRCOM_PATH
+    HOME="${LOCAL_ZK_EMAIL_CIRCOM_PATH}/../"
+    wallet_eml_dir_path=$LOCAL_INCOMING_EML_PATH
+fi
+
 prover_output_path="${wallet_eml_dir_path}/../proofs/"
 
 wallet_eml_path="${wallet_eml_dir_path}/wallet_${nonce}.eml"
@@ -80,7 +87,7 @@ echo "Finished proofgen! Status: ${status_prover}"
 
 # TODO: Upgrade debug -> release and edit dockerfile to use release
 echo "${HOME}/relayer/target/debug/relayer chain false ${prover_output_path} ${nonce}"
-"${HOME}/relayer/target/debug/relayer" chain false "${prover_output_path}" "${nonce}"  | tee /dev/stderr
+"${HOME}/relayer/target/debug/relayer" chain false "${prover_output_path}" "${nonce}"  | tee /dev/stderr    
 status_chain=$?
 if [ $status_chain -ne 0 ]; then
     echo "Chain send failed with status: ${status_chain}"
