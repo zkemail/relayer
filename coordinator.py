@@ -20,6 +20,7 @@ class Prover(Enum):
     MODAL_STUB = "modal_stub_deprecated"
 
 
+load_dotenv()  # Load environment variables from .env file
 PROVER_LOCATION = Prover(os.getenv('PROVER_LOCATION', Prover.MODAL_ENDPOINT.value))
 bucket_name = "relayer-emails"  # Replace with your S3 bucket name
 object_key_template = "emls/wallet_[nonce].txt"  # Replace with the desired object key (name) in S3
