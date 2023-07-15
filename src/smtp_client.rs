@@ -108,6 +108,7 @@ impl EmailSenderClient {
                 let email_regex = regex::Regex::new(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}").unwrap();
                 if let Some(email_match) = email_regex.find(&original_subject) {
                     let recipient_email = email_match.as_str();
+                    print!("Found email in subject, sending with to: {}", recipient_email);
                     let recipient = Mailbox::new(None, recipient_email.parse::<Address>()?);
                     email = email.to(recipient);
                 }
