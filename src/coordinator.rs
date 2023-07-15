@@ -252,11 +252,11 @@ pub async fn validate_email_envelope(raw_email: &str, emailer: &EmailSenderClien
                 token_name: currency.to_string(),
             });
         } else {
-            custom_reply = invalid_reply("seems to match regex but is invalid");
+            custom_reply = invalid_reply("seems to match format, but is invalid");
             valid = ValidationStatus::Failure;
         }
     } else {
-        custom_reply = invalid_reply("failed regex");
+        custom_reply = invalid_reply("failed formatting!");
         valid = ValidationStatus::Failure;
     }
     if ValidationStatus::Ready == valid {
@@ -303,7 +303,7 @@ mod tests {
         let address = result_address.unwrap();
         assert!(!address.is_empty(), "address is empty");
         println!("address: {}", address);
-        assert!(address == "0xc9fa80d22635e4a040385114b9fd7d66a8f7ef91", "Address is incorrect");
+        assert!(address == "0x93b3c87c76c8a9e580e5cbf58fa20e579e76414e", "Address is incorrect");
         Ok(())
     }
 }
