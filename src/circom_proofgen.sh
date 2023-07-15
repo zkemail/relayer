@@ -30,7 +30,7 @@ proof_path="${prover_output_path}/rapidsnark_proof_${nonce}.json"
 public_path="${prover_output_path}/rapidsnark_public_${nonce}.json"
 
 echo "npx tsx ${zk_email_path}/src/scripts/generate_input.ts --email_file='${wallet_eml_path}' --nonce='${nonce}'"
-npx tsx "${zk_email_path}/src/scripts/generate_input.ts" --email_file="${wallet_eml_path}" --nonce="${nonce}"
+npx tsx "${zk_email_path}/src/scripts/generate_input.ts" --email_file="${wallet_eml_path}" --nonce="${nonce}" | tee /dev/stderr
 status_inputgen=$?
 
 echo "Finished input gen! Status: ${status_inputgen}"
@@ -40,7 +40,7 @@ if [ $status_inputgen -ne 0 ]; then
 fi
 
 echo "node ${build_dir}/${CIRCUIT_NAME}_js/generate_witness.js ${build_dir}/${CIRCUIT_NAME}_js/${CIRCUIT_NAME}.wasm ${input_wallet_path} ${witness_path}"
-node "${build_dir}/${CIRCUIT_NAME}_js/generate_witness.js" "${build_dir}/${CIRCUIT_NAME}_js/${CIRCUIT_NAME}.wasm" "${input_wallet_path}" "${witness_path}"
+node "${build_dir}/${CIRCUIT_NAME}_js/generate_witness.js" "${build_dir}/${CIRCUIT_NAME}_js/${CIRCUIT_NAME}.wasm" "${input_wallet_path}" "${witness_path}"  | tee /dev/stderr
 
 status_jswitgen=$?
 echo "status_jswitgen: ${status_jswitgen}"
@@ -68,7 +68,7 @@ if [ $status_lld -ne 0 ]; then
 fi
 
 echo "${HOME}/rapidsnark/build/prover ${build_dir}/${CIRCUIT_NAME}.zkey ${witness_path} ${proof_path} ${public_path}"
-"${HOME}/rapidsnark/build/prover" "${build_dir}/${CIRCUIT_NAME}.zkey" "${witness_path}" "${proof_path}" "${public_path}"
+"${HOME}/rapidsnark/build/prover" "${build_dir}/${CIRCUIT_NAME}.zkey" "${witness_path}" "${proof_path}" "${public_path}"  | tee /dev/stderr
 status_prover=$?
 
 if [ $status_prover -ne 0 ]; then
@@ -80,7 +80,7 @@ echo "Finished proofgen! Status: ${status_prover}"
 
 # TODO: Upgrade debug -> release and edit dockerfile to use release
 echo "${HOME}/relayer/target/debug/relayer chain false ${prover_output_path} ${nonce}"
-"${HOME}/relayer/target/debug/relayer" chain false "${prover_output_path}" "${nonce}"
+"${HOME}/relayer/target/debug/relayer" chain false "${prover_output_path}" "${nonce}"  | tee /dev/stderr
 status_chain=$?
 if [ $status_chain -ne 0 ]; then
     echo "Chain send failed with status: ${status_chain}"
