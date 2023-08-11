@@ -180,7 +180,6 @@ def pull_and_prove_email(aws_url: str, nonce: str):
     download_and_write_file(aws_url, nonce)
     # Print the output of the 'proofgen' command
     new_env = os.environ.copy()
-    print(new_env)
     subprocess.run(["/relayer/src/circom_proofgen.sh", nonce], text=True, env=new_env)
     return
 
