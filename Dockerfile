@@ -38,6 +38,8 @@ RUN yarn install
 # Clone the relayer repository at the latest commit and set it as the working directory
 RUN git clone --branch ${RELAYER_BRANCH_NAME} --single-branch https://github.com/zkemail/relayer /relayer
 WORKDIR /relayer
+RUN cargo build --target x86_64-unknown-linux-gnu
+RUN cargo build --target x86_64-unknown-linux-gnu --release
 
 # Build for any AWS machine
 RUN cargo build --target x86_64-unknown-linux-gnu
