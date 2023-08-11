@@ -44,9 +44,11 @@ pub async fn pending_reply(address: &str, amount: &str, currency: &str, recipien
             let remaining = balance - amount.parse::<f64>().unwrap();
             
             let enough_balance_str = if enough_balance {
-                format!("Your wallet has {} {}. The transaction will send {} {} to {} and your remaining balance will be {} {}", balance, currency, amount, currency, recipient, remaining, currency)
+                format!("Your wallet {} has {} {}. The transaction will send {} {} to {} and your remaining balance will be {} {}", address, balance, currency, amount, currency, recipient, remaining, currency)
             } else {
-                format!("The send has been queued and will execute once enough balance is detected, then automatically send {} {} to {}.", amount, currency, recipient)
+                format!("Created new wallet for you at {} -- in order to send this transaction, you must add at least {} {} to send. \
+                The send has been queued and will execute once enough balance is detected, then automatically send {} {} to {}.",
+                address, amount, currency, amount, currency, recipient)
             };
             enough_balance_str
         },
@@ -58,12 +60,11 @@ pub async fn pending_reply(address: &str, amount: &str, currency: &str, recipien
        
 
     format!(
-        "Created new wallet for you at {} -- in order to send this transaction, you must add at least {} {} to send. \
-        {} \
+        "{} \
         We will follow up with {} Etherscan link when finished! \n \nYou are sending with ZK email technology. \
         The relayer will automatically prove, on-chain, that you sent an email authorizing this transaction. \
         We will deploy a wallet for you if you don't have one. While we're in beta, we've given each email \
         address 10 'TEST' tokens to test out free transfers.",
-        address, amount, currency, balance_detected_message, CHAIN
+        balance_detected_message, CHAIN
     )
 }
