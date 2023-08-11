@@ -267,7 +267,9 @@ async fn process_email(email_data: &EmailData, sender: &EmailSenderClient, zk_em
                             if valid {
                                 break;
                             }
-                            tokio::time::sleep(tokio::time::Duration::from_millis(4000)).await;
+                            // Wait between 4 and 60 seconds to query again, staggering queries to avoid alchemy ratelimits
+                            let random_duration = rand::random::<u64>() % 56 + 4;
+                            tokio::time::sleep(tokio::time::Duration::from_secs(random_duration)).await;
                         }
                         // Call handle_email on success
                         // tokio::task::spawn(async move {
