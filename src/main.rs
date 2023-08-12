@@ -271,10 +271,15 @@ async fn process_email(email_data: &EmailData, sender: &EmailSenderClient, zk_em
                             let random_duration = rand::random::<u64>() % 56 + 4;
                             tokio::time::sleep(tokio::time::Duration::from_secs(random_duration)).await;
                         }
-                        // Call handle_email on success
-                        // tokio::task::spawn(async move {
+                        
+                        // TODO: Only set state to READY once the email has been handled and we see a tx on etherscan with the right nullifier
                         match handle_email(email_data.body.clone(), &zk_email_circom_path.clone().to_string(), Some(file_id)).await {
-                            Ok(_) => println!("Email handled successfully"),
+                            Ok(_) => {
+                                match set_email_state(&email_data.body, &email_data.from, &email_data.subject, ValidationStatus::Ready).await{
+                                    Ok(_) => println!("Email handled successfully"),
+                                    Err(e) => println!("Error setting email state: {}", e),
+                                }
+                            },
                             Err(e) => println!("Error handling email: {}", e),
                         }
                         // });

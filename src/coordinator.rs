@@ -197,6 +197,10 @@ pub async fn validate_email_infer(raw_email: &str, emailer: &EmailSenderClient, 
     validate_email_envelope(raw_email, emailer, "From", "Subject", send_reply).await
 }
 
+/// This function validates the email envelope by checking the subject and sender of the email.
+/// It uses regular expressions to match the subject to a specific pattern and extracts the necessary information.
+/// If the subject matches the pattern, it calculates the sender and recipient addresses and checks the sender's balance.
+/// Depending on the validation status, it sends a reply email and returns the validation status, sender salt, recipient salt, and balance request.
 pub async fn validate_email_envelope(raw_email: &str, emailer: &EmailSenderClient, from_str: &str, subject_str: &str, send_reply: Option<bool>) -> Result<(ValidationStatus, Option<String>, Option<String>, Option<BalanceRequest>)> {
     let from = from_str.to_string();
     let subject = subject_str.to_string();
