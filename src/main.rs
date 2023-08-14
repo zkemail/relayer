@@ -25,6 +25,8 @@ use smtp_client::EmailSenderClient;
 use std::{env, collections::VecDeque};
 use strings::{first_reply, invalid_reply};
 
+use crate::parse_email::{extract_from, extract_subject};
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -187,7 +189,25 @@ async fn run_relayer() -> Result<()> {
                     };
                     email_queue.push_back(email_data);
                 } else {
-                    println!("no body");
+                    // If there's no body, parse those fields out of the raw header data instead
+                    let raw_header = std::str::from_utf8(fetch.header().unwrap())?;
+                    let from_addr = extract_from(&raw_header.to_string()).unwrap_or("".to_string());
+                    let subject_str = extract_subject(&raw_header.to_string()).unwrap_or("".to_string());
+                    println!("from address: {}", from_addr);
+                    println!("subject: {}", subject_str);
+
+                    // Insert the email into the database with Unvalidated status
+                    let hash = calculate_hash(&raw_header.to_string());
+                    set_email_state(&raw_header.to_string(), &from_addr, &subject_str, ValidationStatus::Unvalidated).await?;
+
+                    // Generate unvalidated EmailData and push it to the validation queue for further processing
+                    let email_data = EmailData {
+                        body: raw_header.to_string(),
+                        from: from_addr.clone(),
+                        subject: subject_str.clone(),
+                        state: ValidationStatus::Unvalidated,
+                    };
+                    email_queue.push_back(email_data);
                     break;
                 }
             }
