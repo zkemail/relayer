@@ -334,7 +334,7 @@ pub async fn query_balance(
     let signer = get_signer(force_localhost).await?;
     let logic_contract_address: Address = std::env::var("CONTRACT_ADDRESS").unwrap().parse()?;
     let logic_contract = ContractInstance::new(logic_contract_address, abi, signer);
-    let erc20_address_method = logic_contract.method::<_, Address>("getTokenAddress", "DAI".to_owned())?;
+    let erc20_address_method = logic_contract.method::<_, Address>("getTokenAddress", token_name.to_string())?;
     let erc20_address = erc20_address_method.call().await?;
     let erc_contract = ContractInstance::new(erc20_address, get_abi(AbiType::ERC20).unwrap(), get_signer(force_localhost).await.unwrap());
     // Call the balanceOf function on the ERC20 contract to get the raw balance in wei
