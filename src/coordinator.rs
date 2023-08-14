@@ -215,7 +215,17 @@ pub async fn validate_email_envelope(raw_email: &str, emailer: &EmailSenderClien
     )
     .unwrap();
     let subject_regex = re.clone();
-    let message_id = extract_message_id(&raw_email).unwrap();
+    
+    // let message_id = extract_message_id(&raw_email).unwrap();
+    let message_id_unwrapped = match extract_message_id(&raw_email) {
+        Ok(id) => Some(id),
+        Err(_) => None,
+    };
+
+    let message_id = match message_id_unwrapped {
+        Some(id) => id,
+        None => return Ok((ValidationStatus::Failure, None, None, None)),
+    };
     println!(
         "Subject, from, message id: {:?} {:?} {:?}",
         subject, from, message_id

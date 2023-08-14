@@ -11,7 +11,7 @@ use lettre::{
 };
 
 // use mailparse::Mail;
-use crate::config::{SMTP_DOMAIN_NAME_KEY, SMTP_PORT_KEY};
+use crate::{config::{SMTP_DOMAIN_NAME_KEY, SMTP_PORT_KEY}, parse_email::extract_from};
 use native_tls::{Protocol, TlsConnector};
 use std::error::Error;
 
@@ -51,6 +51,7 @@ impl EmailSenderClient {
         let mut in_reply_to = String::new();
         let mut original_subject = String::new();
 
+        // TODO: Replace this with Sora's code
         for line in raw_email.lines() {
             if line.starts_with("To:") {
                 let parsed: Result<To, _> = To::parse(line);
@@ -87,8 +88,21 @@ impl EmailSenderClient {
             .from(sender.clone())
             .subject(format!("Re: {}", original_subject))
             .in_reply_to(in_reply_to);
+        
+        // TODO: The extract_from function is a bit messy, but this is just a backup for error handling in the SMTP client and may not even reply correctly...
+        let mboxes: Mailboxes = match original_from {
+            Some(from) => from.into(),
+            None => {
+                let extracted = extract_from(raw_email)?;
+                println!("Extracted from as a backup: {:?}", extracted);
+                let parsed_mailbox: Result<Mailbox, _> = extracted.parse();
+                match parsed_mailbox {
+                    Ok(mailbox) => Mailboxes::new().with(mailbox),
+                    Err(_) => Mailboxes::new(),
+                }
+            },
+        };
 
-        let mboxes: Mailboxes = original_from.unwrap().into();
         for mbox in mboxes {
             if mbox.email != sender.email {
                 email = email.to(mbox);

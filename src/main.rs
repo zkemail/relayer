@@ -218,12 +218,16 @@ async fn process_email(email_data: &EmailData, sender: &EmailSenderClient, zk_em
     match validation {
         Ok((validation_status, salt_sender, salt_receiver, balance_request)) => {
             // Calculate the nonce used in the filename
-            let file_id = format!(
-                "({})_({})_({})",
-                salt_sender.unwrap(),
-                salt_receiver.unwrap().as_str(),
-                calculate_hash(&email_data.body)
-            );
+            let file_id = if validation_status == ValidationStatus::Failure || validation_status == ValidationStatus::Unvalidated {
+                String::new()
+            } else {
+                format!(
+                    "({})_({})_({})",
+                    salt_sender.unwrap(),
+                    salt_receiver.unwrap().as_str(),
+                    calculate_hash(&email_data.body)
+                )
+            };
             println!("File ID/Nonce: {}", file_id);
             println!("Validation status: {:?}", validation_status);
 
