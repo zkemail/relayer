@@ -21,8 +21,10 @@ pub fn get_db(path: &str) -> Result<Db, Error> {
             return db;
         }
 
-        println!("Backing off of db access for {} db with {} seconds!", path, backoff);
-        std::thread::sleep(std::time::Duration::from_secs(backoff));
+        println!("Backing off of db access for {} db with {} +- 1 seconds!", path, backoff);
+        let offset = rand::random::<f64>() * 2.0 - 1.0; // Random float between -1 and 1
+        let sleep_duration = backoff as f64 + offset;
+        std::thread::sleep(std::time::Duration::from_secs_f64(sleep_duration));
         db = sled::open(path);
 
         // Back off exponentially till 8 then linearly to 15, at which point we give up
