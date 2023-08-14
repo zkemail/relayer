@@ -99,6 +99,10 @@ pub fn extract_from(email: &str) -> Result<String, Box<dyn Error>> {
                 let from = &from_line[start + 1..end];
                 println!("From email address: {}", from);
                 from_addresses.push(from.to_string());
+            } else {
+                let from = from_line.trim_start_matches("From: ").to_string();
+                println!("From email address: {}", from);
+                from_addresses.push(from);
             }
         }
     }
