@@ -1,28 +1,35 @@
 pub mod chain;
 pub mod config;
 pub mod coordinator;
+pub mod db;
 pub mod imap_client;
 pub mod parse_email;
 pub mod processer;
-pub mod db;
 pub mod smtp_client;
 pub mod strings;
 use anyhow::{anyhow, Result};
-use chain::{query_balance};
+use chain::query_balance;
 use config::{
     IMAP_AUTH_TYPE_KEY, IMAP_AUTH_URL_KEY, IMAP_CLIENT_ID_KEY, IMAP_CLIENT_SECRET_KEY,
     IMAP_DOMAIN_NAME_KEY, IMAP_PORT_KEY, IMAP_REDIRECT_URL_KEY, IMAP_TOKEN_URL_KEY, LOGIN_ID_KEY,
     LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY, SMTP_PORT_KEY, ZK_EMAIL_PATH_KEY,
 };
-use db::{EmailData, migrate_email_dbs, set_email_state, update_email_state_with_raw_email, update_email_state_with_hash, get_pending_and_unvalidated_emails, get_email_data, get_email_data_from_email};
-use coordinator::{calculate_address, BalanceRequest, calculate_hash, handle_email, send_to_modal, validate_email_envelope, ValidationStatus};
+use coordinator::{
+    calculate_address, calculate_hash, handle_email, send_to_modal, validate_email_envelope,
+    BalanceRequest, ValidationStatus,
+};
 use core::future::Future;
+use db::{
+    get_email_data, get_email_data_from_email, get_pending_and_unvalidated_emails,
+    migrate_email_dbs, set_email_state, update_email_state_with_hash,
+    update_email_state_with_raw_email, EmailData,
+};
 use dotenv::dotenv;
 use ethers_core::types::U256;
 use http::StatusCode;
 use imap_client::{IMAPAuth, ImapClient};
 use smtp_client::EmailSenderClient;
-use std::{env, collections::VecDeque};
+use std::{collections::VecDeque, env};
 use strings::{first_reply, invalid_reply};
 
 use crate::parse_email::{extract_from, extract_subject};
@@ -65,7 +72,7 @@ async fn main() -> Result<()> {
     }
 }
 
-/// This function is the main entry point for the email relayer. It initializes the environment, 
+/// This function is the main entry point for the email relayer. It initializes the environment,
 /// sets up the email receiver and sender, and enters a loop where it continuously checks for new emails.
 /// When a new email is detected, it is processed and added to a queue for further handling.
 /// The function is asynchronous and returns a Result.
@@ -136,7 +143,7 @@ async fn run_relayer() -> Result<()> {
                 }
             });
         }
-        
+
         // Collect new emails
         println!("Waiting for new email...");
         receiver.wait_new_email().await?;
@@ -167,7 +174,8 @@ async fn run_relayer() -> Result<()> {
                             address
                         };
                         println!("from address: {}", from_addr);
-                        subject_str = String::from_utf8(e.subject.as_ref().unwrap().to_vec()).unwrap();
+                        subject_str =
+                            String::from_utf8(e.subject.as_ref().unwrap().to_vec()).unwrap();
                         println!("subject: {}", subject_str);
                     } else {
                         println!("no envelope");
@@ -178,7 +186,13 @@ async fn run_relayer() -> Result<()> {
 
                     // Insert the email into the database with Unvalidated status
                     let hash = calculate_hash(&body);
-                    set_email_state(&body, &from_addr, &subject_str, ValidationStatus::Unvalidated).await?;
+                    set_email_state(
+                        &body,
+                        &from_addr,
+                        &subject_str,
+                        ValidationStatus::Unvalidated,
+                    )
+                    .await?;
 
                     // Generate unvalidated EmailData and push it to the validation queue for further processing
                     let email_data = EmailData {
@@ -190,15 +204,31 @@ async fn run_relayer() -> Result<()> {
                     email_queue.push_back(email_data);
                 } else {
                     // If there's no body, parse those fields out of the raw header data instead
-                    let raw_header = std::str::from_utf8(fetch.header().unwrap())?;
+                    // TODO: Fetch.header is None but the email is printed so it's there somewhere
+                    // Print all the fields on fetch
+                    // Wrap the code in a try-catch block to handle potential non-existent fields
+                    println!("Fetch flags: {:?}", fetch.flags());
+                    println!("Fetch body structure: {:?}", fetch.bodystructure());
+                    println!("Fetch internal date: {:?}", fetch.internal_date());
+                    println!("Fetch UID: {:?}", fetch.uid);
+                    println!("Fetch envelope: {:?}", fetch.envelope());
+
+                    let raw_header = std::str::from_utf8(fetch.header().unwrap_or(&[]))?;
                     let from_addr = extract_from(&raw_header.to_string()).unwrap_or("".to_string());
-                    let subject_str = extract_subject(&raw_header.to_string()).unwrap_or("".to_string());
+                    let subject_str =
+                        extract_subject(&raw_header.to_string()).unwrap_or("".to_string());
                     println!("from address: {}", from_addr);
                     println!("subject: {}", subject_str);
 
                     // Insert the email into the database with Unvalidated status
                     let hash = calculate_hash(&raw_header.to_string());
-                    set_email_state(&raw_header.to_string(), &from_addr, &subject_str, ValidationStatus::Unvalidated).await?;
+                    set_email_state(
+                        &raw_header.to_string(),
+                        &from_addr,
+                        &subject_str,
+                        ValidationStatus::Unvalidated,
+                    )
+                    .await?;
 
                     // Generate unvalidated EmailData and push it to the validation queue for further processing
                     let email_data = EmailData {
@@ -230,15 +260,28 @@ async fn run_relayer() -> Result<()> {
 /// * `Result<()>` - The function returns a Result. If the email processing is successful, it returns Ok(()), otherwise it returns an Err.
 ///
 
-async fn process_email(email_data: &EmailData, sender: &EmailSenderClient, zk_email_circom_path: &str) -> Result<()> {
+async fn process_email(
+    email_data: &EmailData,
+    sender: &EmailSenderClient,
+    zk_email_circom_path: &str,
+) -> Result<()> {
     // Validates any unvalidated/pending emails, but don't pending (already-validated email replies)
-    let validation = validate_email_envelope(&email_data.body.as_str(), sender, &email_data.from.as_str(), &email_data.subject.as_str(), Some(email_data.state == ValidationStatus::Unvalidated)).await;
+    let validation = validate_email_envelope(
+        &email_data.body.as_str(),
+        sender,
+        &email_data.from.as_str(),
+        &email_data.subject.as_str(),
+        Some(email_data.state == ValidationStatus::Unvalidated),
+    )
+    .await;
     update_email_state_with_raw_email(&email_data.body, ValidationStatus::Pending).await?;
 
     match validation {
         Ok((validation_status, salt_sender, salt_receiver, balance_request)) => {
             // Calculate the nonce used in the filename
-            let file_id = if validation_status == ValidationStatus::Failure || validation_status == ValidationStatus::Unvalidated {
+            let file_id = if validation_status == ValidationStatus::Failure
+                || validation_status == ValidationStatus::Unvalidated
+            {
                 String::new()
             } else {
                 format!(
@@ -253,8 +296,19 @@ async fn process_email(email_data: &EmailData, sender: &EmailSenderClient, zk_em
 
             let email_handle_result = match validation_status {
                 ValidationStatus::Ready => {
-                    let handled = handle_email(email_data.body.clone(), &zk_email_circom_path.clone().to_string(), Some(file_id)).await;
-                    set_email_state(&email_data.body, &email_data.from, &email_data.subject, ValidationStatus::Ready).await?;
+                    let handled = handle_email(
+                        email_data.body.clone(),
+                        &zk_email_circom_path.clone().to_string(),
+                        Some(file_id),
+                    )
+                    .await;
+                    set_email_state(
+                        &email_data.body,
+                        &email_data.from,
+                        &email_data.subject,
+                        ValidationStatus::Ready,
+                    )
+                    .await?;
                     handled
                 }
                 ValidationStatus::Pending => {
@@ -264,46 +318,62 @@ async fn process_email(email_data: &EmailData, sender: &EmailSenderClient, zk_em
                         token_name,
                     } = balance_request.unwrap();
                     let zk_email_circom_path = zk_email_circom_path.to_string().clone();
-                    set_email_state(&email_data.body, &email_data.from, &email_data.subject, ValidationStatus::Pending).await?;
+                    set_email_state(
+                        &email_data.body,
+                        &email_data.from,
+                        &email_data.subject,
+                        ValidationStatus::Pending,
+                    )
+                    .await?;
                     let email_data = email_data.clone();
                     let validation_future = tokio::task::spawn(async move {
                         loop {
-                            let valid = match query_balance(
-                                false,
-                                address.as_str(),
-                                token_name.as_str(),
-                            )
-                            .await
-                            {
-                                Ok(balance) => {
-                                    let cloned_amount = amount.clone();
-                                    println!("Balance of address {}: {}", address, balance);
-                                    let amount_f64 =
-                                        cloned_amount.parse::<f64>()
-                                            .unwrap_or_else(|_| 0.0);
-                                    balance >= amount_f64
-                                }
-                                Err(error) => {
-                                    println!("error: {}", error);
-                                    false
-                                }
-                            };
+                            let valid =
+                                match query_balance(false, address.as_str(), token_name.as_str())
+                                    .await
+                                {
+                                    Ok(balance) => {
+                                        let cloned_amount = amount.clone();
+                                        println!("Balance of address {}: {}", address, balance);
+                                        let amount_f64 =
+                                            cloned_amount.parse::<f64>().unwrap_or_else(|_| 0.0);
+                                        balance >= amount_f64
+                                    }
+                                    Err(error) => {
+                                        println!("error: {}", error);
+                                        false
+                                    }
+                                };
                             if valid {
                                 break;
                             }
                             // Wait between 4 and 60 seconds to query again, staggering queries to avoid alchemy ratelimits
                             let random_duration = rand::random::<u64>() % 56 + 4;
-                            tokio::time::sleep(tokio::time::Duration::from_secs(random_duration)).await;
+                            tokio::time::sleep(tokio::time::Duration::from_secs(random_duration))
+                                .await;
                         }
-                        
+
                         // TODO: Only set state to READY once the email has been handled and we see a tx on etherscan with the right nullifier
-                        match handle_email(email_data.body.clone(), &zk_email_circom_path.clone().to_string(), Some(file_id)).await {
+                        match handle_email(
+                            email_data.body.clone(),
+                            &zk_email_circom_path.clone().to_string(),
+                            Some(file_id),
+                        )
+                        .await
+                        {
                             Ok(_) => {
-                                match set_email_state(&email_data.body, &email_data.from, &email_data.subject, ValidationStatus::Ready).await{
+                                match set_email_state(
+                                    &email_data.body,
+                                    &email_data.from,
+                                    &email_data.subject,
+                                    ValidationStatus::Ready,
+                                )
+                                .await
+                                {
                                     Ok(_) => println!("Email handled successfully"),
                                     Err(e) => println!("Error setting email state: {}", e),
                                 }
-                            },
+                            }
                             Err(e) => println!("Error handling email: {}", e),
                         }
                         // });
@@ -311,12 +381,24 @@ async fn process_email(email_data: &EmailData, sender: &EmailSenderClient, zk_em
                     Ok(())
                 }
                 ValidationStatus::Failure => {
-                    set_email_state(&email_data.body, &email_data.from, &email_data.subject, ValidationStatus::Failure).await?;
+                    set_email_state(
+                        &email_data.body,
+                        &email_data.from,
+                        &email_data.subject,
+                        ValidationStatus::Failure,
+                    )
+                    .await?;
                     return Err(anyhow!("Validation failed"));
                 }
                 ValidationStatus::Unvalidated => {
                     // Note that this scenario should never be reached
-                    set_email_state(&email_data.body, &email_data.from, &email_data.subject, ValidationStatus::Unvalidated).await?;
+                    set_email_state(
+                        &email_data.body,
+                        &email_data.from,
+                        &email_data.subject,
+                        ValidationStatus::Unvalidated,
+                    )
+                    .await?;
                     return Err(anyhow!("Validation unvalidated"));
                 }
             };
@@ -328,4 +410,3 @@ async fn process_email(email_data: &EmailData, sender: &EmailSenderClient, zk_em
     }
     Ok(())
 }
-
