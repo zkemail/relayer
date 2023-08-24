@@ -125,17 +125,31 @@ pub fn extract_subject(email: &str) -> Result<String, Box<dyn Error>> {
     Err("Could not find subject".into())
 }
 
+pub fn extract_recipient_from_subject(original_subject: &str) -> Result<String, Box<dyn Error>> {
+    let email_regex = regex::Regex::new(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}").unwrap();
+    if let Some(email_match) = email_regex.find(&original_subject) {
+        let recipient_email = email_match.as_str();
+        print!("Found email in subject, sending with to: {}", recipient_email);
+        return Ok(recipient_email.to_string());
+    }
+    Err("Could not find email in subject".into())
+}
+
 pub fn extract_message_id(email: &str) -> Result<String, Box<dyn Error>> {
-    if let Some(message_id_start) = email.find("Message-ID:") {
-        let message_id_line_start = &email[message_id_start..];
-        if let Some(message_id_end) = message_id_line_start.find("\r\n") {
-            let message_id_line = &message_id_line_start[..message_id_end];
-            let email_start = message_id_line.find('<');
-            let email_end = message_id_line.find('>');
-            if let (Some(start), Some(end)) = (email_start, email_end) {
-                let message_id = &message_id_line[start + 1..end];
-                println!("message_id value: {}", message_id);
-                return Ok(message_id.to_string());
+    for message_id in ["Message-ID:", "Message-Id:"] {
+        if let Some(message_id_start) = email.find(message_id) {
+            let message_id_line_start = &email[message_id_start..];
+            println!("Message id line start: {:?}", message_id_line_start);
+            if let Some(message_id_end) = message_id_line_start.find("\r\n") {
+                let message_id_line = &message_id_line_start[..message_id_end];
+                let email_start = message_id_line.find('<');
+                let email_end = message_id_line.find('>');
+                println!("{:?} -> {:?}", email_start, email_end);
+                if let (Some(start), Some(end)) = (email_start, email_end) {
+                    let message_id = &message_id_line[start + 1..end];
+                    println!("message_id value: {}", message_id);
+                    return Ok(message_id.to_string());
+                }
             }
         }
     }

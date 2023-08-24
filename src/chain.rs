@@ -10,7 +10,7 @@ use anyhow::{Error};
 use ethers::core::types::{Address, U256, H160, H256};
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
-use crate::strings::{reply_with_etherscan};
+use crate::strings::{reply_with_etherscan, recipient_intro_body, recipient_intro_subject};
 use crate::config::{INCOMING_EML_PATH, ETHERSCAN_KEY, LOGIN_ID_KEY, LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY};
 use crate::smtp_client::EmailSenderClient;
 // use hex_literal::hex;
@@ -287,6 +287,8 @@ pub async fn send_to_chain(
     };
     println!("Transaction hash: {:?}", pending_tx);
     let etherscan_reply = reply_with_etherscan(pending_tx.tx_hash());
+
+    // Reply-all with tx data
     reply_with_message(nonce, &etherscan_reply, true);
     Ok(())
 }
@@ -298,11 +300,39 @@ fn reply_with_message(nonce: &str, reply: &str, send_to_recipient: bool) {
         env::var(LOGIN_PASSWORD_KEY).unwrap().as_str(),
         Some(env::var(SMTP_DOMAIN_NAME_KEY).unwrap().as_str()),
     );
+
     // Read raw email from received_eml/wallet_{nonce}.eml
     let eml_var = env::var(INCOMING_EML_PATH).unwrap();
 
     let raw_email = fs::read_to_string(format!("{}/wallet_{}.eml", eml_var, nonce)).unwrap();
     let confirmation = sender.reply_all(&raw_email, &reply, send_to_recipient);
+}
+
+fn send_new_message(nonce: &str, reply: &str, new_subject: &str, send_to_recipient: bool) {
+    dotenv().ok();
+    let mut sender: EmailSenderClient = EmailSenderClient::new(
+        env::var(LOGIN_ID_KEY).unwrap().as_str(),
+        env::var(LOGIN_PASSWORD_KEY).unwrap().as_str(),
+        Some(env::var(SMTP_DOMAIN_NAME_KEY).unwrap().as_str()),
+    );
+    // Read raw email from received_eml/wallet_{nonce}.eml
+    let eml_var = env::var(INCOMING_EML_PATH).unwrap();
+
+    let raw_email = fs::read_to_string(format!("{}/wallet_{}.eml", eml_var, nonce)).unwrap();
+    
+    // TODO: Enable this custom recipient response
+    // Also email the recipient that they've received funds
+    // TODO: Customize this to change based on if they've initialized a wallet or not
+    // let intro_subject = recipient_intro_subject(from.as_str(), amount, currency);
+    // let intro_body = recipient_intro_body(from.as_str(), amount, currency);
+    // let recipient = extract_recipient_from_subject(subject.as_str()).unwrap_or("".to_string());
+    // let confirmation_recipient = emailer.send_new_email(intro_subject, intro_body, email_to);
+    // match confirmation_recipient {
+    //     Ok(_) => println!("Confirmation email sent successfully to recipient."),
+    //     Err(e) => println!("Error sending confirmation email: {}", e),
+    // }
+
+    let confirmation = sender.send_new_email(&new_subject,&raw_email, &reply);
 }
 
 pub async fn query_address(

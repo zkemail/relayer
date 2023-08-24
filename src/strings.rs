@@ -68,3 +68,22 @@ pub async fn pending_reply(address: &str, amount: &str, currency: &str, recipien
         balance_detected_message, CHAIN
     )
 }
+
+pub fn recipient_intro_body(sender_email: &str, amount: &str, currency: &str) -> String {
+    format!(
+        "You have received a transfer from {} for {} {} on {}. \
+        We automatically created a wallet for you and sent you the money using Email Wallet's ZK technology (https://prove.email). 
+        
+        If you want to transfer these funds or cash out, you just need to send another email, which you can format on https://sendeth.org.
+        
+        If you don't want this money or weren't expecting a transfer, you can ignore this email and the money will automatically be returned once a year has passed.",
+        sender_email, amount, currency, CHAIN
+    )
+}
+
+pub fn recipient_intro_subject(sender_email: &str, amount: &str, currency: &str) -> String {
+    format!(
+        "Claim your transfer from {} for {} {} on {}",
+        sender_email, amount, currency, CHAIN
+    )
+}

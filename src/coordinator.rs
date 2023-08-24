@@ -8,7 +8,7 @@ use crate::parse_email::*;
 use crate::chain::{query_address, query_balance};
 use crate::smtp_client::EmailSenderClient;
 use crate::db::{get_or_store_salt};
-use crate::strings::{first_reply, invalid_reply, pending_reply};
+use crate::strings::{first_reply, invalid_reply, pending_reply, recipient_intro_subject, recipient_intro_body};
 use anyhow::{anyhow, Result};
 use arkworks_mimc::params::round_keys_contants_to_vec;
 use arkworks_mimc::{
@@ -237,7 +237,9 @@ pub async fn validate_email_envelope(raw_email: &str, emailer: &EmailSenderClien
     let mut recipient_salt: Option<String> = None;
     let mut sender_address: Option<String> = None; // Included since we want to check its balance before sending
     let mut balance_request: Option<BalanceRequest> = None;
-    
+    let mut intro_subject: Option<String> = None;
+    let mut intro_body: Option<String> = None;            
+
     if subject_regex.is_match(subject.as_str()) {
         let regex_subject = subject.clone();
         let captures = re.captures(regex_subject.as_str());
@@ -259,7 +261,10 @@ pub async fn validate_email_envelope(raw_email: &str, emailer: &EmailSenderClien
             let recipient_address = calculate_address(recipient, recipient_salt_raw.as_str()).await.unwrap();
             custom_reply = pending_reply(sender_address.clone().unwrap().as_str(), amount, currency, recipient).await;
             valid = ValidationStatus::Pending;
-            // }
+            
+            intro_subject = Some(recipient_intro_subject(from.as_str(), amount, currency));
+            intro_body = Some(recipient_intro_body(from.as_str(), amount, currency));
+            
             balance_request = Some(BalanceRequest {
                 address: sender_address.unwrap(),
                 amount: amount.to_string(),
