@@ -8,7 +8,7 @@ use crate::parse_email::*;
 use crate::chain::{query_address, query_balance};
 use crate::smtp_client::EmailSenderClient;
 use crate::db::{get_or_store_salt};
-use crate::strings::{first_reply, invalid_reply, pending_reply, recipient_intro_subject, recipient_intro_body};
+use crate::strings::{invalid_reply, pending_reply, recipient_intro_subject, recipient_intro_body};
 use anyhow::{anyhow, Result};
 use arkworks_mimc::params::round_keys_contants_to_vec;
 use arkworks_mimc::{

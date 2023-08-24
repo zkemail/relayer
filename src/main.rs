@@ -30,7 +30,6 @@ use http::StatusCode;
 use imap_client::{IMAPAuth, ImapClient};
 use smtp_client::EmailSenderClient;
 use std::{collections::VecDeque, env};
-use strings::{first_reply, invalid_reply};
 
 use crate::parse_email::{extract_from, extract_subject};
 
