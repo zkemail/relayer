@@ -2,11 +2,16 @@ use ethers::core::types::{Address, U256, H160, H256};
 use crate::chain::{query_balance};
 pub const CHAIN: &str = "Ethereum Goerli";
 
-pub fn invalid_reply(reason: &str) -> String {
+pub fn invalid_reply() -> String {
     format!(
-        "Send {}! Please format your email on https://sendeth.org, or try again with this subject: \"Send _ dai to __@__.___\". \
-        You can send DAI, ETH, or TEST tokens right now.",
-        reason
+        "Subject failed formatting check! Please format your email on https://sendeth.org, or try again with this subject: \"Send _ DAI to __@__.___\". \
+        You can send DAI, USDC, or TEST tokens right now."
+    )
+}
+
+pub fn bad_message_id() -> String {
+    format!(
+        "Email did not have a message-id! Your email client may not be supported -- please contact us at aayushg@mit.edu for us to add support for your domain."
     )
 }
 
@@ -70,9 +75,10 @@ pub fn recipient_intro_body(sender_email: &str, amount: &str, currency: &str) ->
     )
 }
 
+// TODO: Change view > claim for uninitialized accounts
 pub fn recipient_intro_subject(sender_email: &str, amount: &str, currency: &str) -> String {
     format!(
-        "Claim your transfer from {} for {} {} on {}",
+        "View your transfer from {} for {} {} on {}",
         sender_email, amount, currency, CHAIN
     )
 }

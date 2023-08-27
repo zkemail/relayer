@@ -20,6 +20,7 @@ use std::convert::TryFrom;
 use std::env;
 use std::fs;
 use std::str::{self, FromStr};
+use crate::parse_email::{extract_from, extract_subject, parse_subject_for_send};
 // use std::error::Error;
 // use rand::thread_rng;
 // use std::borrow::Borrow;
@@ -295,6 +296,7 @@ pub async fn send_to_chain(
 
 fn reply_with_message(nonce: &str, reply: &str, send_to_recipient: bool) {
     dotenv().ok();
+    // TODO: Don't reconstruct the sender client for each email
     let mut sender: EmailSenderClient = EmailSenderClient::new(
         env::var(LOGIN_ID_KEY).unwrap().as_str(),
         env::var(LOGIN_PASSWORD_KEY).unwrap().as_str(),
@@ -308,7 +310,7 @@ fn reply_with_message(nonce: &str, reply: &str, send_to_recipient: bool) {
     let confirmation = sender.reply_all(&raw_email, &reply, send_to_recipient);
 }
 
-fn send_new_message(nonce: &str, reply: &str, new_subject: &str, send_to_recipient: bool) {
+fn send_final_recipient_intro(nonce: &str, reply: &str, new_subject: &str, send_to_recipient: bool) {
     dotenv().ok();
     let mut sender: EmailSenderClient = EmailSenderClient::new(
         env::var(LOGIN_ID_KEY).unwrap().as_str(),
@@ -319,18 +321,29 @@ fn send_new_message(nonce: &str, reply: &str, new_subject: &str, send_to_recipie
     let eml_var = env::var(INCOMING_EML_PATH).unwrap();
 
     let raw_email = fs::read_to_string(format!("{}/wallet_{}.eml", eml_var, nonce)).unwrap();
+    let from_addr = extract_from(&raw_email.to_string()).unwrap_or("".to_string());
+    let subject_str = extract_subject(&raw_email.to_string()).unwrap_or("".to_string());
+    // Parse the subject to get the amount, currency, and recipient
+    let result = parse_subject_for_send(subject_str.as_str());
+    let (amount, currency, recipient) = match result {
+        Ok((amt, cur, rec)) => (amt, cur, rec),
+        Err(_) => {
+            println!("Could not parse subject");
+            return;
+        }
+    };
+
+    // Create the subject and body for the recipient email
     
-    // TODO: Enable this custom recipient response
-    // Also email the recipient that they've received funds
-    // TODO: Customize this to change based on if they've initialized a wallet or not
-    // let intro_subject = recipient_intro_subject(from.as_str(), amount, currency);
-    // let intro_body = recipient_intro_body(from.as_str(), amount, currency);
-    // let recipient = extract_recipient_from_subject(subject.as_str()).unwrap_or("".to_string());
-    // let confirmation_recipient = emailer.send_new_email(intro_subject, intro_body, email_to);
-    // match confirmation_recipient {
-    //     Ok(_) => println!("Confirmation email sent successfully to recipient."),
-    //     Err(e) => println!("Error sending confirmation email: {}", e),
-    // }
+    let intro_subject = recipient_intro_subject(from_addr.as_str(), &amount, &currency);
+    let intro_body = recipient_intro_body(from_addr.as_str(), &amount, &currency);
+
+    // Send the email to the recipient
+    let confirmation_recipient = sender.send_new_email(intro_subject.as_str(), intro_body.as_str(), &recipient);
+    match confirmation_recipient {
+        Ok(_) => println!("Confirmation email sent successfully to recipient."),
+        Err(e) => println!("Error sending confirmation email: {}", e),
+    }
 
     let confirmation = sender.send_new_email(&new_subject,&raw_email, &reply);
 }

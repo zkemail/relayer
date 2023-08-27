@@ -8,7 +8,7 @@ use crate::parse_email::*;
 use crate::chain::{query_address, query_balance};
 use crate::smtp_client::EmailSenderClient;
 use crate::db::{get_or_store_salt};
-use crate::strings::{invalid_reply, pending_reply, recipient_intro_subject, recipient_intro_body};
+use crate::strings::*;
 use anyhow::{anyhow, Result};
 use arkworks_mimc::params::round_keys_contants_to_vec;
 use arkworks_mimc::{
@@ -208,15 +208,23 @@ pub async fn validate_email_envelope(raw_email: &str, emailer: &EmailSenderClien
         Some(value) => value,
         None => true,
     };
+    let mut custom_reply: String = "".to_string();
+    let mut valid: ValidationStatus = ValidationStatus::Pending;
+    let mut balance_request: Option<BalanceRequest> = None;
 
     // Validate subject, and send rejection/reformatting email if necessary
-    let re = Regex::new(
-        r"([Ss]end|[Tt]ransfer) ?\$?(\d+(\.\d+)?) (eth|usdc|dai|test|ETH|USDC|DAI|TEST|Dai|Eth|Usdc|Test) to (.+@.+(\..+)+)",
-    )
-    .unwrap();
-    let subject_regex = re.clone();
-    
-    // let message_id = extract_message_id(&raw_email).unwrap();
+    let result = parse_subject_for_send(subject.as_str());
+    let (amount, currency, recipient) = match result {
+        Ok((amt, cur, rec)) => (amt, cur, rec),
+        Err(_) => {
+            custom_reply = invalid_reply();
+            if send_reply {
+                send_confirmation_email(raw_email, &custom_reply, emailer).await;
+            }
+            return Ok((ValidationStatus::Failure, None, None, None));
+        }
+    };
+
     let message_id_unwrapped = match extract_message_id(&raw_email) {
         Ok(id) => Some(id),
         Err(_) => None,
@@ -224,60 +232,35 @@ pub async fn validate_email_envelope(raw_email: &str, emailer: &EmailSenderClien
 
     let message_id = match message_id_unwrapped {
         Some(id) => id,
-        None => return Ok((ValidationStatus::Failure, None, None, None)),
+        None => {
+            custom_reply = bad_message_id();
+            if send_reply {
+                send_confirmation_email(raw_email, &custom_reply, emailer).await;
+            }
+            return Ok((ValidationStatus::Failure, None, None, None));
+        }
     };
+
     println!(
         "Subject, from, message id: {:?} {:?} {:?}",
         subject, from, message_id
     );
 
-    let mut custom_reply: String = "".to_string();
-    let mut valid: ValidationStatus = ValidationStatus::Pending;
-    let mut sender_salt: Option<String> = None;
-    let mut recipient_salt: Option<String> = None;
-    let mut sender_address: Option<String> = None; // Included since we want to check its balance before sending
-    let mut balance_request: Option<BalanceRequest> = None;
-    let mut intro_subject: Option<String> = None;
-    let mut intro_body: Option<String> = None;            
+    let (sender_salt_exists, sender_salt_raw) = get_or_store_salt(from.as_str(), message_id.as_str()).await.unwrap();
+    let (recipient_salt_exists, recipient_salt_raw) = get_or_store_salt(recipient.as_str(), message_id.as_str()).await.unwrap();
+    let sender_salt = Some(sender_salt_raw.clone());
+    let recipient_salt = Some(recipient_salt_raw.clone());
+    let sender_address = Some(calculate_address(from.as_str(), sender_salt_raw.as_str()).await.unwrap());
+    let recipient_address = calculate_address(recipient.as_str(), recipient_salt_raw.as_str()).await.unwrap();
+    custom_reply = pending_reply(sender_address.clone().unwrap().as_str(), &amount, &currency, &recipient).await;
+    valid = ValidationStatus::Pending;
+    
+    balance_request = Some(BalanceRequest {
+        address: sender_address.unwrap(),
+        amount: amount.to_string(),
+        token_name: currency.to_string(),
+    });
 
-    if subject_regex.is_match(subject.as_str()) {
-        let regex_subject = subject.clone();
-        let captures = re.captures(regex_subject.as_str());
-        if let Some(captures) = captures {
-            // Extract the amount and recipient from the captures
-            let amount = captures.get(2).map_or("", |m| m.as_str());
-            let currency = captures.get(4).map_or("", |m| m.as_str());
-            let recipient = captures.get(5).map_or("", |m| m.as_str());
-            println!(
-                "Amount: {}, Recipient: {}, Currency: {}",
-                amount, recipient, currency
-            );
-            
-            let (sender_salt_exists, sender_salt_raw) = get_or_store_salt(from.as_str(), message_id.as_str()).await.unwrap();
-            let (recipient_salt_exists, recipient_salt_raw) = get_or_store_salt(recipient, message_id.as_str()).await.unwrap();
-            sender_salt = Some(sender_salt_raw.clone());
-            recipient_salt = Some(recipient_salt_raw.clone());
-            sender_address = Some(calculate_address(from.as_str(), sender_salt_raw.as_str()).await.unwrap());
-            let recipient_address = calculate_address(recipient, recipient_salt_raw.as_str()).await.unwrap();
-            custom_reply = pending_reply(sender_address.clone().unwrap().as_str(), amount, currency, recipient).await;
-            valid = ValidationStatus::Pending;
-            
-            intro_subject = Some(recipient_intro_subject(from.as_str(), amount, currency));
-            intro_body = Some(recipient_intro_body(from.as_str(), amount, currency));
-            
-            balance_request = Some(BalanceRequest {
-                address: sender_address.unwrap(),
-                amount: amount.to_string(),
-                token_name: currency.to_string(),
-            });
-        } else {
-            custom_reply = invalid_reply("seems to match format, but is invalid");
-            valid = ValidationStatus::Failure;
-        }
-    } else {
-        custom_reply = invalid_reply("failed formatting!");
-        valid = ValidationStatus::Failure;
-    }
     if ValidationStatus::Ready == valid {
         println!("Send valid! Validating proof...");
     } else if valid == ValidationStatus::Pending {  
@@ -285,15 +268,21 @@ pub async fn validate_email_envelope(raw_email: &str, emailer: &EmailSenderClien
     } else {
         println!("Send invalid! Regex failed...");
     }
+
     if send_reply {
-        let confirmation: std::result::Result<(), Box<dyn Error>> = emailer.reply_all(raw_email, &custom_reply, false);
-        match confirmation {
-            Ok(_) => println!("Confirmation email sent successfully."),
-            Err(e) => println!("Error sending confirmation email: {}", e),
-        }
+        send_confirmation_email(raw_email, &custom_reply, emailer).await;
     }
 
     return Ok((valid, sender_salt, recipient_salt, balance_request));
+}
+
+async fn send_confirmation_email(raw_email: &str, custom_reply: &str, emailer: &EmailSenderClient) -> () {
+    let confirmation: std::result::Result<(), Box<dyn Error>> = emailer.reply_all(raw_email, custom_reply, false);
+    match confirmation {
+        Ok(_) => println!("Confirmation email sent successfully."),
+        Err(e) => println!("Error sending confirmation email: {}", e),
+    }
+    return;
 }
 
 #[cfg(test)]

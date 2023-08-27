@@ -156,6 +156,25 @@ pub fn extract_message_id(email: &str) -> Result<String, Box<dyn Error>> {
     Err("Could not find message_id value".into())
 }
 
+pub fn parse_subject_for_send(subject_str: &str) -> Result<(String, String, String), Box<dyn Error + Send>> {
+    let subject_regex = regex::Regex::new(r"(?i)([Ss]end|[Tt]ransfer) ?\$?(\d+(\.\d+)?) (eth|usdc|dai|test|ETH|USDC|DAI|TEST|Dai|Eth|Usdc|Test) to (.+@.+(\..+)+)").unwrap();
+    if subject_regex.is_match(subject_str) {
+        let captures = subject_regex.captures(subject_str);
+        if let Some(captures) = captures {
+            // Extract the amount, currency and recipient from the captures
+            let amount = captures.get(2).map_or("", |m| m.as_str()).to_string();
+            let currency = captures.get(4).map_or("", |m| m.as_str()).to_string();
+            let recipient = captures.get(5).map_or("", |m| m.as_str()).to_string();
+            println!(
+                "Parsed subject: Amount: {}, Currency: {}, Recipient: {}",
+                amount, currency, recipient
+            );
+            return Ok((amount, currency, recipient));
+        }
+    }
+    Err(anyhow!("Could not parse subject").into())
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

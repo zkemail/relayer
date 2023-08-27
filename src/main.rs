@@ -216,8 +216,8 @@ async fn run_relayer() -> Result<()> {
                     let from_addr = extract_from(&raw_header.to_string()).unwrap_or("".to_string());
                     let subject_str =
                         extract_subject(&raw_header.to_string()).unwrap_or("".to_string());
-                    println!("from address if broken: {}", from_addr);
-                    println!("subject if broken: {}", subject_str);
+                    println!("From address if broken: {}", from_addr);
+                    println!("Subject if broken: {}", subject_str);
 
                     // Insert the email into the database with Unvalidated status
                     let hash = calculate_hash(&raw_header.to_string());
