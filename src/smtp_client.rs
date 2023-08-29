@@ -1,18 +1,12 @@
+use crate::parse_email::{extract_from, extract_recipient_from_subject};
 use lettre::{
     message::{
-        header::{Cc, From, Header, HeaderName, InReplyTo, ReplyTo, To},
-        Mailbox, Mailboxes, MessageBuilder,
+        header::{Cc, From, Header, To},
+        Mailbox, Mailboxes,
     },
-    transport::smtp::{
-        authentication::Credentials, client::SmtpConnection, commands::*, extension::ClientId,
-        SMTP_PORT,
-    },
+    transport::smtp::authentication::Credentials,
     Address, Message, SmtpTransport, Transport,
 };
-
-// use mailparse::Mail;
-use crate::{config::{SMTP_DOMAIN_NAME_KEY, SMTP_PORT_KEY}, parse_email::{extract_from, extract_recipient_from_subject}};
-use native_tls::{Protocol, TlsConnector};
 use std::error::Error;
 
 #[derive(Clone)]
@@ -27,7 +21,7 @@ impl EmailSenderClient {
 
         let creds = Credentials::new(email_id.to_owned(), email_app_password.to_owned());
 
-        let mut client = SmtpTransport::relay(smtp_address)
+        let client = SmtpTransport::relay(smtp_address)
             .unwrap()
             .credentials(creds)
             .build();
@@ -38,8 +32,12 @@ impl EmailSenderClient {
         }
     }
 
-
-    pub fn send_new_email(&self, email_subject: &str, email_body: &str, email_to: &str) -> Result<bool, Box<dyn Error>> {
+    pub fn send_new_email(
+        &self,
+        email_subject: &str,
+        email_body: &str,
+        email_to: &str,
+    ) -> Result<bool, Box<dyn Error>> {
         let from_mbox = Mailbox::new(None, self.email_id.parse::<Address>()?);
         let to_mbox = Mailbox::new(None, email_to.parse::<Address>()?);
 
@@ -61,7 +59,12 @@ impl EmailSenderClient {
     /// The original subject is extracted from the raw_email parameter.
     /// If send_to_recipient, the email recipient mentioned in the subject will be added to the final confirmation
 
-    pub fn reply_all(&self, raw_email: &str, reply_body: &str, send_to_recipient: bool) -> Result<(), Box<dyn Error>> {
+    pub fn reply_all(
+        &self,
+        raw_email: &str,
+        reply_body: &str,
+        send_to_recipient: bool,
+    ) -> Result<(), Box<dyn Error>> {
         let mut original_to = vec![];
         let mut original_cc = vec![];
         let mut original_from = None;
@@ -105,7 +108,7 @@ impl EmailSenderClient {
             .from(sender.clone())
             .subject(format!("Re: {}", original_subject))
             .in_reply_to(in_reply_to);
-        
+
         // TODO: The extract_from function is a bit messy, but this is just a backup for error handling in the SMTP client and may not even reply correctly...
         let mboxes: Mailboxes = match original_from {
             Some(from) => from.into(),
@@ -117,7 +120,7 @@ impl EmailSenderClient {
                     Ok(mailbox) => Mailboxes::new().with(mailbox),
                     Err(_) => Mailboxes::new(),
                 }
-            },
+            }
         };
 
         for mbox in mboxes {
@@ -133,7 +136,7 @@ impl EmailSenderClient {
                 }
                 email = email.to(mbox);
             }
-            
+
             if send_to_recipient {
                 // Extract and send to any email address from the subject
                 print!("Searching for email in subject... {:?}", original_subject);
@@ -141,7 +144,7 @@ impl EmailSenderClient {
                     Ok(recipient_email) => {
                         let recipient = Mailbox::new(None, recipient_email.parse::<Address>()?);
                         email = email.to(recipient);
-                    },
+                    }
                     Err(e) => {
                         println!("Error extracting recipient from subject: {:?}", e);
                     }
@@ -152,7 +155,7 @@ impl EmailSenderClient {
         for cc in original_cc {
             let mboxes: Mailboxes = cc.into();
             for mbox in mboxes {
-                if (mbox.email == self.email_id.parse::<Address>()?) {
+                if mbox.email == self.email_id.parse::<Address>()? {
                     continue;
                 }
                 email = email.cc(mbox);

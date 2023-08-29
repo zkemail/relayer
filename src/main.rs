@@ -1,3 +1,7 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(deprecated)]
+
 pub mod chain;
 pub mod config;
 pub mod coordinator;
@@ -12,21 +16,16 @@ use chain::query_balance;
 use config::{
     IMAP_AUTH_TYPE_KEY, IMAP_AUTH_URL_KEY, IMAP_CLIENT_ID_KEY, IMAP_CLIENT_SECRET_KEY,
     IMAP_DOMAIN_NAME_KEY, IMAP_PORT_KEY, IMAP_REDIRECT_URL_KEY, IMAP_TOKEN_URL_KEY, LOGIN_ID_KEY,
-    LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY, SMTP_PORT_KEY, ZK_EMAIL_PATH_KEY,
+    LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY, ZK_EMAIL_PATH_KEY,
 };
 use coordinator::{
-    calculate_address, calculate_hash, handle_email, send_to_modal, validate_email_envelope,
-    BalanceRequest, ValidationStatus,
+    calculate_hash, handle_email, validate_email_envelope, BalanceRequest, ValidationStatus,
 };
-use core::future::Future;
 use db::{
-    get_email_data, get_email_data_from_email, get_pending_and_unvalidated_emails,
-    migrate_email_dbs, set_email_state, update_email_state_with_hash,
+    get_pending_and_unvalidated_emails, migrate_email_dbs, set_email_state,
     update_email_state_with_raw_email, EmailData,
 };
 use dotenv::dotenv;
-use ethers_core::types::U256;
-use http::StatusCode;
 use imap_client::{IMAPAuth, ImapClient};
 use smtp_client::EmailSenderClient;
 use std::{collections::VecDeque, env};
@@ -149,7 +148,7 @@ async fn run_relayer() -> Result<()> {
         println!("New email detected!");
         let fetches = receiver.retrieve_new_emails().await?;
         for fetched in fetches.into_iter() {
-            for fetch in fetched.iter().into_iter() {
+            for fetch in fetched.iter() {
                 if let Some(b) = fetch.body() {
                     let from_addr: String;
                     let subject_str: String;
@@ -213,16 +212,15 @@ async fn run_relayer() -> Result<()> {
                     println!("Fetch envelope: {:?}", fetch.envelope());
 
                     let raw_header = std::str::from_utf8(fetch.header().unwrap_or(&[]))?;
-                    let from_addr = extract_from(&raw_header.to_string()).unwrap_or("".to_string());
-                    let subject_str =
-                        extract_subject(&raw_header.to_string()).unwrap_or("".to_string());
+                    let from_addr = extract_from(raw_header).unwrap_or("".to_string());
+                    let subject_str = extract_subject(raw_header).unwrap_or("".to_string());
                     println!("From address if broken: {}", from_addr);
                     println!("Subject if broken: {}", subject_str);
 
                     // Insert the email into the database with Unvalidated status
                     let hash = calculate_hash(&raw_header.to_string());
                     set_email_state(
-                        &raw_header.to_string(),
+                        raw_header,
                         &from_addr,
                         &subject_str,
                         ValidationStatus::Unvalidated,
@@ -266,10 +264,10 @@ async fn process_email(
 ) -> Result<()> {
     // Validates any unvalidated/pending emails, but don't pending (already-validated email replies)
     let validation = validate_email_envelope(
-        &email_data.body.as_str(),
+        email_data.body.as_str(),
         sender,
-        &email_data.from.as_str(),
-        &email_data.subject.as_str(),
+        email_data.from.as_str(),
+        email_data.subject.as_str(),
         Some(email_data.state == ValidationStatus::Unvalidated),
     )
     .await;
@@ -297,7 +295,7 @@ async fn process_email(
                 ValidationStatus::Ready => {
                     let handled = handle_email(
                         email_data.body.clone(),
-                        &zk_email_circom_path.clone().to_string(),
+                        zk_email_circom_path.clone(),
                         Some(file_id),
                     )
                     .await;
@@ -335,7 +333,7 @@ async fn process_email(
                                         let cloned_amount = amount.clone();
                                         println!("Balance of address {}: {}", address, balance);
                                         let amount_f64 =
-                                            cloned_amount.parse::<f64>().unwrap_or_else(|_| 0.0);
+                                            cloned_amount.parse::<f64>().unwrap_or(0.0);
                                         balance >= amount_f64
                                     }
                                     Err(error) => {

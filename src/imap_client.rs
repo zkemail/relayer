@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
-use imap::types::{Fetch, Fetches};
-use imap::{Authenticator, Client, Session};
+use imap::types::Fetches;
+use imap::{Authenticator, Session};
 use native_tls::{self, TlsStream};
 use oauth2::reqwest::async_http_client;
 use oauth2::{
@@ -10,7 +10,6 @@ use oauth2::{
 use serde_json;
 use std::io;
 use std::net::TcpStream;
-use std::slice::Iter;
 
 // We cache the domain name, port, and auth for reconnection on failure
 #[derive(Debug)]
@@ -42,7 +41,7 @@ pub struct OAuthed {
     access_token: String,
 }
 
-impl<'a> Authenticator for OAuthed {
+impl Authenticator for OAuthed {
     type Response = String;
     #[allow(unused_variables)]
     fn process(&self, data: &[u8]) -> Self::Response {
@@ -130,7 +129,7 @@ impl ImapClient {
     }
 
     async fn idle_wait(&mut self) -> Result<()> {
-        let idle_result = self.imap_session.idle().wait_while(|response| {false});
+        let idle_result = self.imap_session.idle().wait_while(|response| false);
         match idle_result {
             Ok(reason) => println!("IDLE finished normally {:?}", reason),
             Err(e) => println!("IDLE finished with error {:?}", e),
@@ -140,7 +139,7 @@ impl ImapClient {
 
     async fn reconnect(&mut self) -> Result<()> {
         let mut retry_count = 0;
-        let mut MAX_RETRIES = 5;
+        const MAX_RETRIES: i32 = 5;
         while retry_count < MAX_RETRIES {
             match ImapClient::construct(self.domain_name.as_str(), self.port, self.auth.clone())
                 .await
@@ -162,7 +161,6 @@ impl ImapClient {
         ))
     }
 
-
     pub async fn retrieve_new_emails(&mut self) -> Result<Vec<Fetches>> {
         loop {
             match self.imap_session.uid_search("UNSEEN") {
@@ -179,13 +177,9 @@ impl ImapClient {
                 }
                 Err(e) => {
                     println!("Connection reset, reconnecting...");
-                    if let Err(e) = self.reconnect().await {
-                        return Err(e);
-                    }
+                    self.reconnect().await?;
                 }
             }
         }
     }
 }
-
-

@@ -1,12 +1,9 @@
 // use cfdkim::*;
-use futures::executor::block_on;
-use mail_auth::common::verify::VerifySignature;
-use std::error::Error;
-// use mail_auth::Error;
 use anyhow::{anyhow, Result};
+use mail_auth::common::verify::VerifySignature;
 use mail_auth::{AuthenticatedMessage, DkimResult, Resolver};
 use sha2::{self, Digest, Sha256};
-use std::env;
+use std::error::Error;
 use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
 use trust_dns_resolver::proto::rr::{RData, RecordType};
 use trust_dns_resolver::AsyncResolver;
@@ -28,10 +25,9 @@ pub async fn parse_external_eml(
     let signature = result[0].signature().unwrap();
 
     let body_bytes = &authenticated_message.raw_message[authenticated_message.body_offset..];
-    let hash = Sha256::digest(&body_bytes);
+    let hash = Sha256::digest(body_bytes);
     println!("Hashes {:?} {:?}: ", hash, signature.body_hash());
 
-    #[warn(deprecated)]
     assert_eq!(
         base64::encode(hash),
         base64::encode(signature.body_hash()),
@@ -76,7 +72,6 @@ async fn get_public_key(domain: &str) -> Result<String, Box<dyn std::error::Erro
                 let parts: Vec<_> = data.split("; ").collect();
                 for part in parts {
                     if part.starts_with("p=") {
-                        assert_eq!(part.strip_prefix("p=").unwrap(), part[2..].to_string());
                         return Ok(part.strip_prefix("p=").unwrap().to_string());
                     }
                 }
@@ -89,8 +84,8 @@ async fn get_public_key(domain: &str) -> Result<String, Box<dyn std::error::Erro
 
 pub fn extract_from(email: &str) -> Result<String, Box<dyn Error>> {
     let mut from_addresses: Vec<String> = Vec::new();
-    let mut email_lines = email.lines();
-    while let Some(line) = email_lines.next() {
+    let email_lines = email.lines();
+    for line in email_lines {
         if line.starts_with("From:") {
             let from_line = line;
             let email_start = from_line.find('<');
@@ -127,9 +122,12 @@ pub fn extract_subject(email: &str) -> Result<String, Box<dyn Error>> {
 
 pub fn extract_recipient_from_subject(original_subject: &str) -> Result<String, Box<dyn Error>> {
     let email_regex = regex::Regex::new(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}").unwrap();
-    if let Some(email_match) = email_regex.find(&original_subject) {
+    if let Some(email_match) = email_regex.find(original_subject) {
         let recipient_email = email_match.as_str();
-        print!("Found email in subject, sending with to: {}", recipient_email);
+        print!(
+            "Found email in subject, sending with to: {}",
+            recipient_email
+        );
         return Ok(recipient_email.to_string());
     }
     Err("Could not find email in subject".into())
@@ -156,7 +154,9 @@ pub fn extract_message_id(email: &str) -> Result<String, Box<dyn Error>> {
     Err("Could not find message_id value".into())
 }
 
-pub fn parse_subject_for_send(subject_str: &str) -> Result<(String, String, String), Box<dyn Error + Send>> {
+pub fn parse_subject_for_send(
+    subject_str: &str,
+) -> Result<(String, String, String), Box<dyn Error + Send>> {
     let subject_regex = regex::Regex::new(r"(?i)([Ss]end|[Tt]ransfer) ?\$?(\d+(\.\d+)?) (eth|usdc|dai|test|ETH|USDC|DAI|TEST|Dai|Eth|Usdc|Test) to (.+@.+(\..+)+)").unwrap();
     if subject_regex.is_match(subject_str) {
         let captures = subject_regex.captures(subject_str);

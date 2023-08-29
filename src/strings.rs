@@ -1,18 +1,15 @@
-use ethers::core::types::{Address, U256, H160, H256};
-use crate::chain::{query_balance};
+use crate::chain::query_balance;
+use ethers::core::types::H256;
+
 pub const CHAIN: &str = "Ethereum Goerli";
 
 pub fn invalid_reply() -> String {
-    format!(
-        "Subject failed formatting check! Please format your email on https://sendeth.org, or try again with this subject: \"Send _ DAI to __@__.___\". \
-        You can send DAI, USDC, or TEST tokens right now."
-    )
+    "Subject failed formatting check! Please format your email on https://sendeth.org, or try again with this subject: \"Send _ DAI to __@__.___\". \
+        You can send DAI, USDC, or TEST tokens right now.".to_string()
 }
 
 pub fn bad_message_id() -> String {
-    format!(
-        "Email did not have a message-id! Your email client may not be supported -- please contact us at aayushg@mit.edu for us to add support for your domain."
-    )
+    "Email did not have a message-id! Your email client may not be supported -- please contact us at aayushg@mit.edu for us to add support for your domain.".to_string()
 }
 
 pub fn reply_with_etherscan(tx_hash: H256) -> String {
@@ -26,32 +23,23 @@ pub fn reply_with_etherscan(tx_hash: H256) -> String {
 }
 
 pub async fn pending_reply(address: &str, amount: &str, currency: &str, recipient: &str) -> String {
-    let mut enough_balance = false;
-    let balance_detected_message = match query_balance(
-        false,
-        address.clone(),
-        currency,
-    )
-    .await {
+    let enough_balance;
+    let balance_detected_message = match query_balance(false, address.clone(), currency).await {
         Ok(balance) => {
             enough_balance = balance >= amount.parse().unwrap();
             let remaining = balance - amount.parse::<f64>().unwrap();
-            
-            let enough_balance_str = if enough_balance {
+
+            if enough_balance {
                 format!("Your wallet {} has {} {}. The transaction will send {} {} to {} and your remaining balance will be {} {}.", address, balance, currency, amount, currency, recipient, remaining, currency)
             } else {
                 format!("Created new wallet for you at {} -- in order to send this transaction, you must add at least {} {} to send. \
                 The send has been queued and will execute once enough balance is detected, then automatically send {} {} to {}.",
                 address, amount, currency, amount, currency, recipient)
-            };
-            enough_balance_str
-        },
-        Err(_) => {
-            format!("Failed to detect balance in account.")
+            }
         }
+        Err(_) => "Failed to detect balance in account.".to_string(),
     };
     println!("Balance detected message: {}", balance_detected_message);
-       
 
     format!(
         "{} \

@@ -1,9 +1,8 @@
-
+use crate::coordinator::{calculate_hash, ValidationStatus};
+use anyhow::{anyhow, Result};
+use serde::{Deserialize, Serialize};
 use sled;
 use sled::{Db, Error};
-use crate::coordinator::{ValidationStatus, calculate_hash};
-use serde::{Serialize, Deserialize};
-use anyhow::{anyhow, Result};
 
 /// The `get_db` function attempts to open a database at the given path.
 /// If the database cannot be opened, it will retry with an exponential backoff strategy.
@@ -17,18 +16,21 @@ pub fn get_db(path: &str) -> Result<Db, Error> {
     let mut backoff = 1;
     while db.is_err() {
         // Give up
-        if (backoff == 15) {
+        if backoff == 15 {
             return db;
         }
 
-        println!("Backing off of db access for {} db with {} +- 1 seconds!", path, backoff);
+        println!(
+            "Backing off of db access for {} db with {} +- 1 seconds!",
+            path, backoff
+        );
         let offset = rand::random::<f64>() * 2.0 - 1.0; // Random float between -1 and 1
         let sleep_duration = backoff as f64 + offset;
         std::thread::sleep(std::time::Duration::from_secs_f64(sleep_duration));
         db = sled::open(path);
 
         // Back off exponentially till 8 then linearly to 15, at which point we give up
-        if (backoff < 7) {
+        if backoff < 7 {
             backoff *= 2; // Exponential backoff
         } else {
             backoff += 1;
@@ -58,7 +60,6 @@ pub async fn migrate_email_dbs() -> Result<()> {
 
     Ok(())
 }
-
 
 /// This function retrieves the salt associated with an email address and message ID.
 /// If the email exists in the database, it returns true and the salt as a string.
@@ -103,7 +104,6 @@ pub async fn get_or_store_salt(email: &str, message_id: &str) -> Result<(bool, S
 //     }
 // }
 
-
 /// Define the EmailData struct that the database will store.
 /// Raw email is the raw email body as a string (including headers)
 /// From is the raw sender email address
@@ -115,7 +115,7 @@ pub struct EmailData {
     pub state: ValidationStatus,
 }
 
-/// This database maps ids (hashes) to a struct/JSON with raw emails, from email, subject, and validation status. 
+/// This database maps ids (hashes) to a struct/JSON with raw emails, from email, subject, and validation status.
 /// This function extracts and returns all emails that have a pending validation status.
 pub async fn get_pending_and_unvalidated_emails() -> Result<Vec<EmailData>> {
     let db = match get_db("./db/email_statuses") {
@@ -127,7 +127,9 @@ pub async fn get_pending_and_unvalidated_emails() -> Result<Vec<EmailData>> {
     for result in db.iter() {
         let (_id, value) = result?;
         let email_data: EmailData = serde_json::from_slice(&value)?;
-        if email_data.state == ValidationStatus::Pending || email_data.state == ValidationStatus::Unvalidated {
+        if email_data.state == ValidationStatus::Pending
+            || email_data.state == ValidationStatus::Unvalidated
+        {
             pending_emails.push(email_data);
         }
     }
@@ -137,7 +139,12 @@ pub async fn get_pending_and_unvalidated_emails() -> Result<Vec<EmailData>> {
 
 /// This function sets the email state given the raw email, from, subject, and state.
 /// It first opens the database, creates an EmailData object, serializes it, calculates the email hash, and then inserts it into the database.
-pub async fn set_email_state(raw_email: &str, from: &str, subject: &str, state: ValidationStatus) -> Result<()> {
+pub async fn set_email_state(
+    raw_email: &str,
+    from: &str,
+    subject: &str,
+    state: ValidationStatus,
+) -> Result<()> {
     let db = match get_db("./db/email_statuses") {
         Ok(database) => database,
         Err(e) => return Err(anyhow!("Failed to open database: {}", e)),
@@ -176,7 +183,7 @@ pub async fn get_email_data_from_email(raw_email: &str) -> Result<EmailData> {
         Ok(database) => database,
         Err(e) => return Err(anyhow!("Failed to open database: {}", e)),
     };
-    
+
     let email_hash = calculate_hash(&raw_email.to_string());
     let value = db.get(email_hash.as_bytes())?;
     let value_bytes = match value {
@@ -189,7 +196,10 @@ pub async fn get_email_data_from_email(raw_email: &str) -> Result<EmailData> {
 
 /// This function updates the email state given the raw email.
 /// It first retrieves the email data from the database, updates the state, and then reinserts it into the database.
-pub async fn update_email_state_with_raw_email(raw_email: &str, state: ValidationStatus) -> Result<()> {
+pub async fn update_email_state_with_raw_email(
+    raw_email: &str,
+    state: ValidationStatus,
+) -> Result<()> {
     let email_hash = calculate_hash(&raw_email.to_string());
     let mut email_data = get_email_data(&email_hash).await?;
 
@@ -212,7 +222,7 @@ pub async fn update_email_state_with_hash(email_hash: &str, state: ValidationSta
         Ok(database) => database,
         Err(e) => return Err(anyhow!("Failed to open database: {}", e)),
     };
-    let mut email_data = get_email_data(&email_hash).await?;
+    let mut email_data = get_email_data(email_hash).await?;
     email_data.state = state;
     let serialized_email_data = serde_json::to_vec(&email_data)?;
     db.insert(email_hash.as_bytes(), serialized_email_data)?;

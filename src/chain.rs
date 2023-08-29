@@ -1,31 +1,20 @@
-// use ethers_core::utils::CompiledContract;
-// use ethers_providers::{Http, Middleware, Provider};
-// use ethers_signers::{LocalWallet, Signer};
-
+use crate::config::{INCOMING_EML_PATH, LOGIN_ID_KEY, LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY};
+use crate::parse_email::{extract_from, extract_subject, parse_subject_for_send};
+use crate::smtp_client::EmailSenderClient;
+use crate::strings::{recipient_intro_body, recipient_intro_subject, reply_with_etherscan};
+use anyhow::Error;
 use dotenv::dotenv;
 use ethers::abi::Abi;
-// use ethers::contract::ContractError;
+use ethers::core::types::{Address, H160, U256};
 use ethers::prelude::*;
-use anyhow::{Error};
-use ethers::core::types::{Address, U256, H160, H256};
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
-use crate::strings::{reply_with_etherscan, recipient_intro_body, recipient_intro_subject};
-use crate::config::{INCOMING_EML_PATH, ETHERSCAN_KEY, LOGIN_ID_KEY, LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY};
-use crate::smtp_client::EmailSenderClient;
-// use hex_literal::hex;
 use k256::ecdsa::SigningKey;
 use serde_json::Value;
 use std::convert::TryFrom;
 use std::env;
 use std::fs;
 use std::str::{self, FromStr};
-use crate::parse_email::{extract_from, extract_subject, parse_subject_for_send};
-// use std::error::Error;
-// use rand::thread_rng;
-// use std::borrow::Borrow;
-// use rustc_hex::{FromHex, ToHex};
-// use std::sync::Arc;
 
 pub type SignerType = SignerMiddleware<Provider<Http>, Wallet<SigningKey>>;
 pub type ClientType = NonceManagerMiddleware<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>;
@@ -37,7 +26,7 @@ pub struct CircomCalldata {
     signals: [U256; 27],
 }
 
-// Define a new function that takes optional arguments and provides default values
+/// Define a new function that takes optional arguments and provides default values
 pub fn get_calldata(dir: Option<&str>, nonce: Option<&str>) -> Result<CircomCalldata, Error> {
     // Provide default values if arguments are not specified
     let dir = dir.unwrap_or("");
@@ -47,12 +36,7 @@ pub fn get_calldata(dir: Option<&str>, nonce: Option<&str>) -> Result<CircomCall
     parse_files_into_calldata(dir, nonce)
 }
 
-// #[tokio::main]
-// async
-fn parse_files_into_calldata(
-    dir: &str,
-    nonce: &str,
-) -> Result<CircomCalldata, Error> {
+fn parse_files_into_calldata(dir: &str, nonce: &str) -> Result<CircomCalldata, Error> {
     let proof_dir = dir.to_owned() + "rapidsnark_proof_" + nonce + ".json";
     let proof_json: Value = serde_json::from_str(&fs::read_to_string(proof_dir).unwrap()).unwrap();
     let public_json: Value = serde_json::from_str(
@@ -96,10 +80,7 @@ fn parse_files_into_calldata(
 
     println!("signals_vec: {:?}", signals_vec);
 
-    let signals: [U256; 27] = signals_vec
-        .as_slice()
-        .try_into()
-        .unwrap();
+    let signals: [U256; 27] = signals_vec.as_slice().try_into().unwrap();
 
     let calldata = CircomCalldata {
         pi_a,
@@ -161,7 +142,6 @@ pub async fn get_signer(force_localhost: bool) -> Result<SignerType, Error> {
     let private_key_hex =
         std::env::var("PRIVATE_KEY").expect("The PRIVATE_KEY environment variable must be set");
     let wallet: LocalWallet = LocalWallet::from_str(&private_key_hex)?;
-    let address = wallet.address();
     let signer = SignerMiddleware::new(provider, wallet.with_chain_id(chain_id));
     Ok(signer)
 }
@@ -175,27 +155,30 @@ struct EtherscanResponse {
 
 #[derive(Debug, serde::Deserialize)]
 struct Transaction {
-    blockNumber: String,
-    timeStamp: String,
+    block_number: String,
+    time_stamp: String,
     hash: String,
     nonce: String,
-    blockHash: String,
-    transactionIndex: String,
+    block_hash: String,
+    transaction_index: String,
     from: String,
     to: String,
     value: String,
     gas: String,
-    gasPrice: String,
-    isError: String,
+    gas_price: String,
+    is_error: String,
     txreceipt_status: String,
     input: String,
-    contractAddress: String,
-    cumulativeGasUsed: String,
-    gasUsed: String,
+    contract_address: String,
+    cumulative_gas_sed: String,
+    gas_used: String,
     confirmations: String,
 }
 
-pub async fn get_pending_tx_count(force_localhost: bool, wallet_address: H160) -> Result<usize, Error> {
+pub async fn get_pending_tx_count(
+    force_localhost: bool,
+    wallet_address: H160,
+) -> Result<usize, Error> {
     Ok(0)
     // Query the current nonce of the account
     // let provider = (get_provider(force_localhost).await).unwrap();
@@ -228,16 +211,12 @@ pub async fn get_pending_tx_count(force_localhost: bool, wallet_address: H160) -
 
 // local: bool - whether or not to send to a local RPC
 // dir: data directory where the intermediate rapidsnark inputs/proofs will be stored
-pub async fn send_to_chain(
-    force_localhost: bool,
-    dir: &str,
-    nonce: &str,
-) -> Result<(), Error> {
+pub async fn send_to_chain(force_localhost: bool, dir: &str, nonce: &str) -> Result<(), Error> {
     // Load environment variables from the .env file
     dotenv().ok();
     let contract_address: Address = std::env::var("CONTRACT_ADDRESS").unwrap().parse()?;
     let signer_raw = get_signer(force_localhost).await.unwrap();
-    let sender_address = signer_raw.address().clone();
+    let sender_address = signer_raw.address();
     let signer = signer_raw.nonce_manager(sender_address);
 
     let gas_price = get_gas_price(force_localhost).await.unwrap();
@@ -247,14 +226,20 @@ pub async fn send_to_chain(
 
     // Initialize NonceManagerMiddleware
     // let nonce_manager = NonceManagerMiddleware::new(signer, sender_address);
-        // let contract: ContractInstance<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>, Abi> =
-        // ContractInstance::new(contract_address, get_abi(AbiType::Wallet).unwrap(), signer);
-    let contract = ContractInstance::<_, ClientType>::new(contract_address, get_abi(AbiType::Wallet).unwrap(), &signer);
+    // let contract: ContractInstance<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>, Abi> =
+    // ContractInstance::new(contract_address, get_abi(AbiType::Wallet).unwrap(), signer);
+    let contract = ContractInstance::<_, ClientType>::new(
+        contract_address,
+        get_abi(AbiType::Wallet).unwrap(),
+        &signer,
+    );
     // let contract = ContractInstance::new(contract_address, get_abi(AbiType::Wallet).unwrap(), signer);
 
     signer.initialize_nonce(None).await?;
 
-    let pending_txes = get_pending_tx_count(force_localhost, sender_address).await.expect("Pending tx count failed");
+    let pending_txes = get_pending_tx_count(force_localhost, sender_address)
+        .await
+        .expect("Pending tx count failed");
     for _ in 0..pending_txes {
         let mut _nonce = signer.next();
     }
@@ -297,7 +282,7 @@ pub async fn send_to_chain(
 fn reply_with_message(nonce: &str, reply: &str, send_to_recipient: bool) {
     dotenv().ok();
     // TODO: Don't reconstruct the sender client for each email
-    let mut sender: EmailSenderClient = EmailSenderClient::new(
+    let sender: EmailSenderClient = EmailSenderClient::new(
         env::var(LOGIN_ID_KEY).unwrap().as_str(),
         env::var(LOGIN_PASSWORD_KEY).unwrap().as_str(),
         Some(env::var(SMTP_DOMAIN_NAME_KEY).unwrap().as_str()),
@@ -307,12 +292,17 @@ fn reply_with_message(nonce: &str, reply: &str, send_to_recipient: bool) {
     let eml_var = env::var(INCOMING_EML_PATH).unwrap();
 
     let raw_email = fs::read_to_string(format!("{}/wallet_{}.eml", eml_var, nonce)).unwrap();
-    let confirmation = sender.reply_all(&raw_email, &reply, send_to_recipient);
+    let _ = sender.reply_all(&raw_email, reply, send_to_recipient);
 }
 
-fn send_final_recipient_intro(nonce: &str, reply: &str, new_subject: &str, send_to_recipient: bool) {
+fn send_final_recipient_intro(
+    nonce: &str,
+    reply: &str,
+    new_subject: &str,
+    _send_to_recipient: bool,
+) {
     dotenv().ok();
-    let mut sender: EmailSenderClient = EmailSenderClient::new(
+    let sender: EmailSenderClient = EmailSenderClient::new(
         env::var(LOGIN_ID_KEY).unwrap().as_str(),
         env::var(LOGIN_PASSWORD_KEY).unwrap().as_str(),
         Some(env::var(SMTP_DOMAIN_NAME_KEY).unwrap().as_str()),
@@ -334,32 +324,31 @@ fn send_final_recipient_intro(nonce: &str, reply: &str, new_subject: &str, send_
     };
 
     // Create the subject and body for the recipient email
-    
+
     let intro_subject = recipient_intro_subject(from_addr.as_str(), &amount, &currency);
     let intro_body = recipient_intro_body(from_addr.as_str(), &amount, &currency);
 
     // Send the email to the recipient
-    let confirmation_recipient = sender.send_new_email(intro_subject.as_str(), intro_body.as_str(), &recipient);
+    let confirmation_recipient =
+        sender.send_new_email(intro_subject.as_str(), intro_body.as_str(), &recipient);
     match confirmation_recipient {
         Ok(_) => println!("Confirmation email sent successfully to recipient."),
         Err(e) => println!("Error sending confirmation email: {}", e),
     }
 
-    let confirmation = sender.send_new_email(&new_subject,&raw_email, &reply);
+    let _ = sender.send_new_email(new_subject, &raw_email, reply);
 }
 
-pub async fn query_address(
-    force_localhost: bool,
-    user_salt: &str,
-) -> Result<H160, Error> {
+pub async fn query_address(force_localhost: bool, user_salt: &str) -> Result<H160, Error> {
     // Load environment variables from the .env file
     dotenv().ok();
     let abi = get_abi(AbiType::Wallet)?;
     let signer = get_signer(force_localhost).await?;
     let logic_contract_address: Address = std::env::var("CONTRACT_ADDRESS").unwrap().parse()?;
     let logic_contract = ContractInstance::new(logic_contract_address, abi, signer);
-    let decimal_salt_u256 = U256::from_dec_str(&user_salt)?;
-    let address_method = logic_contract.method::<_, Address>("getOrCreateWallet", decimal_salt_u256)?;
+    let decimal_salt_u256 = U256::from_dec_str(user_salt)?;
+    let address_method =
+        logic_contract.method::<_, Address>("getOrCreateWallet", decimal_salt_u256)?;
     let address = address_method.call().await?;
     Ok(address)
 }
@@ -377,9 +366,14 @@ pub async fn query_balance(
     let signer = get_signer(force_localhost).await?;
     let logic_contract_address: Address = std::env::var("CONTRACT_ADDRESS").unwrap().parse()?;
     let logic_contract = ContractInstance::new(logic_contract_address, abi, signer);
-    let erc20_address_method = logic_contract.method::<_, Address>("getTokenAddress", token_name.to_string())?;
+    let erc20_address_method =
+        logic_contract.method::<_, Address>("getTokenAddress", token_name.to_string())?;
     let erc20_address = erc20_address_method.call().await?;
-    let erc_contract = ContractInstance::new(erc20_address, get_abi(AbiType::ERC20).unwrap(), get_signer(force_localhost).await.unwrap());
+    let erc_contract = ContractInstance::new(
+        erc20_address,
+        get_abi(AbiType::ERC20).unwrap(),
+        get_signer(force_localhost).await.unwrap(),
+    );
     // Call the balanceOf function on the ERC20 contract to get the raw balance in wei
     let raw_balance: U256 = erc_contract
         .method::<_, U256>("balanceOf", Address::from_str(user_address).unwrap())
@@ -402,7 +396,6 @@ pub async fn query_balance(
     Ok(balance)
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -410,15 +403,16 @@ mod test {
     #[tokio::test]
     async fn test_query_balance() {
         dotenv::dotenv().ok();
-        let balance = query_balance(false, "0x11fE4B6AE13d2a6055C8D9cF65c55bac32B5d844", "DAI").await;
+        let balance =
+            query_balance(false, "0x11fE4B6AE13d2a6055C8D9cF65c55bac32B5d844", "DAI").await;
 
         match balance {
             Ok(bal) => {
                 assert!(bal > 0.0, "Balance must be more than 0");
-            },
+            }
             Err(e) => {
                 println!("Error: {:?}", e);
-                assert!(false, "Error getting balance");
+                panic!("Error getting balance");
             }
         }
     }
@@ -426,19 +420,14 @@ mod test {
     #[tokio::test]
     async fn test_get_pending_tx_count() {
         dotenv::dotenv().ok();
-        let wallet_address = "0x11fE4B6AE13d2a6055C8D9cF65c55bac32B5d844".parse().unwrap();
+        let wallet_address = "0x11fE4B6AE13d2a6055C8D9cF65c55bac32B5d844"
+            .parse()
+            .unwrap();
         let pending_tx_count = get_pending_tx_count(false, wallet_address).await;
 
-        match pending_tx_count {
-            Ok(count) => {
-                assert!(count >= 0, "Pending transaction count must be non-negative");
-            },
-            Err(e) => {
-                println!("Error: {:?}", e);
-                assert!(false, "Error getting pending transaction count");
-            }
+        if let Err(e) = pending_tx_count {
+            println!("Error: {:?}", e);
+            panic!("Error getting pending transaction count");
         }
     }
 }
-
-
