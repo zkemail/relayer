@@ -2,6 +2,7 @@
 #![allow(unused_variables)]
 #![allow(deprecated)]
 
+pub mod args;
 pub mod chain;
 pub mod config;
 pub mod coordinator;
@@ -11,8 +12,12 @@ pub mod parse_email;
 pub mod processer;
 pub mod smtp_client;
 pub mod strings;
+
+use crate::parse_email::{extract_from, extract_subject};
 use anyhow::{anyhow, Result};
+use args::*;
 use chain::query_balance;
+use clap::Parser;
 use config::{
     IMAP_AUTH_TYPE_KEY, IMAP_AUTH_URL_KEY, IMAP_CLIENT_ID_KEY, IMAP_CLIENT_SECRET_KEY,
     IMAP_DOMAIN_NAME_KEY, IMAP_PORT_KEY, IMAP_REDIRECT_URL_KEY, IMAP_TOKEN_URL_KEY, LOGIN_ID_KEY,
@@ -30,44 +35,27 @@ use imap_client::{IMAPAuth, ImapClient};
 use smtp_client::EmailSenderClient;
 use std::{collections::VecDeque, env};
 
-use crate::parse_email::{extract_from, extract_subject};
-
 #[tokio::main]
 async fn main() -> Result<()> {
-    let args: Vec<String> = env::args().collect();
+    let cli = CLI::parse();
 
-    match args.get(1) {
-        Some(arg) => match arg.as_str() {
-            "chain" => {
-                if args.len() < 5 {
-                    println!("Function1 requires three additional parameters: a bool to force localhost [usually false], a directory string, and a nonce string.");
-                } else {
-                    let force_localhost = args[2]
-                        .parse::<bool>()
-                        .expect("Error parsing force_localhost. Should be 'true' or 'false'");
-
-                    let dir = &args[3];
-                    let nonce = &args[4];
-
-                    chain::send_to_chain(force_localhost, dir, nonce).await?;
-                };
-                Ok(())
-            }
-            "relayer" => {
-                run_relayer().await?;
-                Ok(())
-            }
-            "migrate" => {
-                // Unused for now
-                migrate_email_dbs().await?;
-                Ok(())
-            }
-            _ => Err(anyhow!("Invalid function! Use either 'chain' or 'relayer'")),
-        },
-        None => Err(anyhow!(
-            "Please provide a function to call! Use either 'chain' or 'relayer'"
-        )),
+    match cli.command {
+        Commands::Chain {
+            force_localhost,
+            dir,
+            nonce,
+        } => {
+            // TODO! change it to bool flag instead of string parsing
+            let force_localhost = force_localhost
+                .parse::<bool>()
+                .expect("Error parsing force_localhost. Should be 'true' or 'false'");
+            chain::send_to_chain(force_localhost, &dir, &nonce).await?;
+        }
+        Commands::Relayer => run_relayer().await?,
+        Commands::Migrate => migrate_email_dbs().await?,
     }
+
+    Ok(())
 }
 
 /// This function is the main entry point for the email relayer. It initializes the environment,
