@@ -40,16 +40,8 @@ async fn main() -> Result<()> {
     let cli = CLI::parse();
 
     match cli.command {
-        Commands::Chain {
-            force_localhost,
-            dir,
-            nonce,
-        } => {
-            // TODO! change it to bool flag instead of string parsing
-            let force_localhost = force_localhost
-                .parse::<bool>()
-                .expect("Error parsing force_localhost. Should be 'true' or 'false'");
-            chain::send_to_chain(force_localhost, &dir, &nonce).await?;
+        Commands::Chain { dir, nonce } => {
+            chain::send_to_chain(false, &dir, &nonce).await?;
         }
         Commands::Relayer => run_relayer().await?,
         Commands::Migrate => migrate_email_dbs().await?,

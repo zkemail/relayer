@@ -11,11 +11,7 @@ pub struct CLI {
 #[derive(Subcommand)]
 pub enum Commands {
     #[command(about = "Runs send_to_chain")]
-    Chain {
-        force_localhost: String,
-        dir: String,
-        nonce: String,
-    },
+    Chain { dir: String, nonce: String },
     #[command(about = "Runs relayer")]
     Relayer,
     #[command(about = "Migrate db")]
