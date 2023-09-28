@@ -19,7 +19,6 @@ RUN apt-get update && \
 
 # Clone rapidsnark
 RUN  git clone https://github.com/Divide-By-0/rapidsnark /rapidsnark
-COPY ./rapidsnark/build /rapidsnark/build
 WORKDIR /rapidsnark
 RUN npm install
 RUN git submodule init
