@@ -20,7 +20,7 @@ RUN apt-get update && \
 # Clone rapidsnark
 RUN  git clone https://github.com/Divide-By-0/rapidsnark /rapidsnark
 WORKDIR /rapidsnark
-RUN npm install
+RUN yarn install
 RUN git submodule init
 RUN git submodule update
 RUN chmod +x /rapidsnark/build/prover
