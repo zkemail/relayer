@@ -1,9 +1,9 @@
-# Use the official Rust image as the base image
 FROM rust:latest
 ARG ZKEMAIL_BRANCH_NAME=anon_wallet
 ARG RELAYER_BRANCH_NAME=modal_anon
 ARG REFRESH_ZK_EMAIL=0
 ARG REFRESH_RELAYER=0
+ARG ZKEMAIL_COMMIT=dae73c1a03859f4eacd0fc565946a7095dd87e85
 
 # Install Node.js 16.x and Yarn
 RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && \
@@ -15,7 +15,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && \
 
 # Update the package list and install necessary dependencies
 RUN apt-get update && \
-    apt install -y cmake build-essential pkg-config libssl-dev libgmp-dev libsodium-dev nasm
+    apt install -y cmake build-essential pkg-config libssl-dev libgmp-dev libsodium-dev nasm awscli git tar
 
 # Clone rapidsnark
 RUN  git clone https://github.com/Divide-By-0/rapidsnark /rapidsnark
@@ -31,8 +31,12 @@ RUN npx task buildProver
 
 # Clone zk email repository at the latest commit and set it as the working directory
 RUN git clone https://github.com/zkemail/zk-email-verify -b ${ZKEMAIL_BRANCH_NAME} /zk-email-verify
-COPY ./zk-email-verify/build /zk-email-verify/build
+RUN mkdir /zk-email-verify/build && \
+    cd /zk-email-verify/build && \
+    aws s3 sync s3://zkemail-zkey-chunks/${ZKEMAIL_COMMIT} . && \
+    for file in *.tar.gz; do tar -xvf "$file"; done
 WORKDIR /zk-email-verify
+
 RUN yarn install
 
 # Clone the relayer repository at the latest commit and set it as the working directory
@@ -59,3 +63,4 @@ RUN git pull
 
 # Make necessary files executable
 RUN chmod +x /relayer/src/circom_proofgen.sh
+

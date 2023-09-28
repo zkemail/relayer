@@ -54,6 +54,14 @@ fn parse_files_into_calldata(
     nonce: &str,
 ) -> Result<CircomCalldata, Error> {
     let proof_dir = dir.to_owned() + "rapidsnark_proof_" + nonce + ".json";
+    // If the proof dir doesn't exist, probably the proof wasn't generated properly. Send an email to the user.
+    if !std::path::Path::new(&proof_dir).exists() {
+        let failure_subject = "File validation failed";
+        let failure_body = format!("The file {} does not exist.", proof_dir);
+        let sender = EmailSenderClient::new(env::var(LOGIN_ID_KEY).unwrap().as_str(), env::var(LOGIN_PASSWORD_KEY).unwrap().as_str(), Some(env::var(SMTP_DOMAIN_NAME_KEY).unwrap().as_str()));
+        sender.send_new_email(failure_subject, &failure_body, &recipient);
+        return Err(Error::new(std::io::Error::new(std::io::ErrorKind::NotFound, "File not found")));
+    }
     let proof_json: Value = serde_json::from_str(&fs::read_to_string(proof_dir).unwrap()).unwrap();
     let public_json: Value = serde_json::from_str(
         &fs::read_to_string(dir.to_owned() + "rapidsnark_public_" + nonce + ".json").unwrap(),
