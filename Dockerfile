@@ -5,34 +5,30 @@ ARG REFRESH_ZK_EMAIL=0
 ARG REFRESH_RELAYER=0
 ARG ZKEMAIL_COMMIT=dae73c1a03859f4eacd0fc565946a7095dd87e85
 
-# Install Node.js 16.x and Yarn
-RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && \
-    apt-get install -y nodejs && \
-    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor -o /usr/share/keyrings/yarn-archive-keyring.gpg && \
-    echo "deb [signed-by=/usr/share/keyrings/yarn-archive-keyring.gpg] https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list && \
-    apt-get update && \
-    apt-get install -y yarn
+RUN apt-get update && apt-get upgrade -y 
 
 # Update the package list and install necessary dependencies
 RUN apt-get update && \
-    apt install -y cmake build-essential pkg-config libssl-dev libgmp-dev libsodium-dev nasm awscli git tar
+    apt install -y nodejs cmake build-essential pkg-config libssl-dev libgmp-dev libsodium-dev nasm awscli git tar
+
+RUN npm install -g yarn npx
 
 # Clone rapidsnark
-RUN  git clone https://github.com/Divide-By-0/rapidsnark /rapidsnark
+RUN git clone https://github.com/Divide-By-0/rapidsnark /rapidsnark
 WORKDIR /rapidsnark
-RUN yarn install
 RUN git submodule init
 RUN git submodule update
-RUN chmod +x /rapidsnark/build/prover
+RUN yarn install
 RUN npx task createFieldSources
 RUN npx task buildPistache
 RUN npx task buildProver
+RUN chmod +x /rapidsnark/build/prover
 
 # Clone zk email repository at the latest commit and set it as the working directory
 RUN git clone https://github.com/zkemail/zk-email-verify -b ${ZKEMAIL_BRANCH_NAME} /zk-email-verify
 RUN mkdir /zk-email-verify/build && \
     cd /zk-email-verify/build && \
-    aws s3 sync s3://zkemail-zkey-chunks/${ZKEMAIL_COMMIT} . && \
+    curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT} | tar xz && \
     for file in *.tar.gz; do tar -xvf "$file"; done
 WORKDIR /zk-email-verify
 
