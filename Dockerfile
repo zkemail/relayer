@@ -28,31 +28,31 @@ RUN chmod +x /rapidsnark/build/prover
 RUN git clone https://github.com/zkemail/zk-email-verify -b ${ZKEMAIL_BRANCH_NAME} /zk-email-verify
 RUN mkdir /zk-email-verify/build 
 WORKDIR /zk-email-verify/build
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet.zkey.tar.gz
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet.zkeyb.tar.gz
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet.zkeyc.tar.gz
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet.zkeyd.tar.gz
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet.zkeye.tar.gz
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet.zkeyf.tar.gz
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet.zkeyg.tar.gz
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet.zkeyh.tar.gz
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet.zkeyi.tar.gz
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet.zkeyj.tar.gz
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet.zkeyk.tar.gz
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet_js/generate_witness.js -o ./wallet_js/generate_witness.js
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet_js/wallet.wasm -o ./wallet_js/wallet.wasm
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet_js/wallet.wat -o ./wallet_js/wallet.wat
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet_js/witness_calculator.js -o ./wallet_js/witness_calculator.js
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet_cpp/calcwit.cpp -o ./wallet_cpp/calcwit.cpp
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet_cpp/calcwit.hpp -o ./wallet_cpp/calcwit.hpp
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet_cpp/circom.hpp -o ./wallet_cpp/circom.hpp
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet_cpp/fr.asm -o ./wallet_cpp/fr.asm
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet_cpp/fr.cpp -o ./wallet_cpp/fr.cpp
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet_cpp/fr.hpp -o ./wallet_cpp/fr.hpp
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet_cpp/main.cpp -o ./wallet_cpp/main.cpp
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet_cpp/Makefile -o ./wallet_cpp/Makefile
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet_cpp/wallet.cpp -o ./wallet_cpp/wallet.cpp
-RUN curl -L https://s3.amazonaws.com/zkemail-zkey-chunks/${ZKEMAIL_COMMIT}/wallet_cpp/wallet.dat -o ./wallet_cpp/wallet.dat
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkey.tar.gz
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyb.tar.gz
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyc.tar.gz
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyd.tar.gz
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeye.tar.gz
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyf.tar.gz
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyg.tar.gz
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyh.tar.gz
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyi.tar.gz
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyj.tar.gz
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyk.tar.gz
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_js/generate_witness.js -o ./wallet_js/generate_witness.js
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_js/wallet.wasm -o ./wallet_js/wallet.wasm
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_js/wallet.wat -o ./wallet_js/wallet.wat
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_js/witness_calculator.js -o ./wallet_js/witness_calculator.js
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/calcwit.cpp -o ./wallet_cpp/calcwit.cpp
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/calcwit.hpp -o ./wallet_cpp/calcwit.hpp
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/circom.hpp -o ./wallet_cpp/circom.hpp
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/fr.asm -o ./wallet_cpp/fr.asm
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/fr.cpp -o ./wallet_cpp/fr.cpp
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/fr.hpp -o ./wallet_cpp/fr.hpp
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/main.cpp -o ./wallet_cpp/main.cpp
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/Makefile -o ./wallet_cpp/Makefile
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/wallet.cpp -o ./wallet_cpp/wallet.cpp
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/wallet.dat -o ./wallet_cpp/wallet.dat
 RUN for file in ./wallet/*.tar.gz; do tar -xvf "$file" -C ./wallet; done
 WORKDIR /zk-email-verify
 
