@@ -55,7 +55,6 @@ RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/walle
 RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/Makefile -o ./wallet_cpp/Makefile
 RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/wallet.cpp -o ./wallet_cpp/wallet.cpp
 RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/wallet.dat -o ./wallet_cpp/wallet.dat
-RUN for file in ./wallet/*.tar.gz; do tar -xvf "$file" -C ./wallet; done
 WORKDIR /zk-email-verify
 
 RUN yarn install
