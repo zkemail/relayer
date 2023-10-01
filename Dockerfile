@@ -3,7 +3,7 @@ ARG ZKEMAIL_BRANCH_NAME=anon_wallet
 ARG RELAYER_BRANCH_NAME=modal_anon
 ARG REFRESH_ZK_EMAIL=0
 ARG REFRESH_RELAYER=0
-ARG ZKEMAIL_COMMIT=dae73c1a03859f4eacd0fc565946a7095dd87e85
+ARG ZKEMAIL_COMMIT=e6592d86cb200d98d46db62d63404e7214a11569
 
 RUN apt-get update && apt-get upgrade -y 
 
@@ -28,17 +28,16 @@ RUN chmod +x /rapidsnark/build/prover
 RUN git clone https://github.com/zkemail/zk-email-verify -b ${ZKEMAIL_BRANCH_NAME} /zk-email-verify
 RUN mkdir /zk-email-verify/build 
 WORKDIR /zk-email-verify/build
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkey.tar.gz
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyb.tar.gz
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyc.tar.gz
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyd.tar.gz
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeye.tar.gz
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyf.tar.gz
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyg.tar.gz
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyh.tar.gz
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyi.tar.gz
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyj.tar.gz
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyk.tar.gz
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkey
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyc
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyd
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeye
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyf
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyg
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyh
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyi
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyj
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyk
 RUN mkdir /zk-email-verify/build/wallet_js
 RUN mkdir /zk-email-verify/build/wallet_cpp
 RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_js/generate_witness.js -o ./wallet_js/generate_witness.js

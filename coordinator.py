@@ -148,7 +148,7 @@ def upload_file_to_s3(local_file_path, bucket_name, nonce):
 
 # --------- MODAL CLOUD COORDINATOR ------------
 image = modal.Image.from_dockerhub(
-    "aayushg0/zkemail-modal:modal",
+    "aayushg0/zkemail-image-updated:modal",
     setup_dockerfile_commands=["RUN apt-get install -y python3 python-is-python3 python3-pip", "RUN cp -r /rapidsnark /root/rapidsnark",
                                "RUN cd /relayer && git pull && cargo build --target x86_64-unknown-linux-gnu",
                                "RUN cp -r /relayer /root/relayer",
