@@ -126,6 +126,7 @@ pub fn extract_subject(email: &str) -> Result<String, Box<dyn Error>> {
 }
 
 pub fn extract_recipient_from_subject(original_subject: &str) -> Result<String, Box<dyn Error>> {
+    // TIL However, in the context of a character class (the square brackets), the dot does not need to be escaped, it is treated as a literal dot. So your original regular expression is correct if you intended to include the literal dot in the character class.
     let email_regex = regex::Regex::new(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}").unwrap();
     if let Some(email_match) = email_regex.find(&original_subject) {
         let recipient_email = email_match.as_str();

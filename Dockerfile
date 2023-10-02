@@ -1,38 +1,46 @@
-# Use the official Rust image as the base image
+FROM aayushg0/rapidsnark:latest AS rapidsnark
 FROM rust:latest
 ARG ZKEMAIL_BRANCH_NAME=anon_wallet
 ARG RELAYER_BRANCH_NAME=modal_anon
 ARG REFRESH_ZK_EMAIL=0
 ARG REFRESH_RELAYER=0
+ARG ZKEMAIL_COMMIT=e6592d86cb200d98d46db62d63404e7214a11569
 
-# Install Node.js 16.x and Yarn
-RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && \
-    apt-get install -y nodejs && \
-    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor -o /usr/share/keyrings/yarn-archive-keyring.gpg && \
-    echo "deb [signed-by=/usr/share/keyrings/yarn-archive-keyring.gpg] https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list && \
-    apt-get update && \
-    apt-get install -y yarn
+RUN apt-get update && apt-get upgrade -y 
 
 # Update the package list and install necessary dependencies
 RUN apt-get update && \
-    apt install -y cmake build-essential pkg-config libssl-dev libgmp-dev libsodium-dev nasm
+    apt install -y nodejs npm cmake build-essential pkg-config libssl-dev libgmp-dev libsodium-dev nasm awscli git tar
 
-# Clone rapidsnark
-RUN  git clone https://github.com/Divide-By-0/rapidsnark /rapidsnark
-COPY ./rapidsnark/build /rapidsnark/build
-WORKDIR /rapidsnark
-RUN npm install
-RUN git submodule init
-RUN git submodule update
+RUN npm install -g yarn npx
+ 
+COPY --from=rapidsnark /rapidsnark/build /rapidsnark/build
+WORKDIR /rapidsnark/build
 RUN chmod +x /rapidsnark/build/prover
-RUN npx task createFieldSources
-RUN npx task buildPistache
-RUN npx task buildProver
 
 # Clone zk email repository at the latest commit and set it as the working directory
 RUN git clone https://github.com/zkemail/zk-email-verify -b ${ZKEMAIL_BRANCH_NAME} /zk-email-verify
-COPY ./zk-email-verify/build /zk-email-verify/build
+RUN mkdir /zk-email-verify/build 
+WORKDIR /zk-email-verify/build
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_nonchunked.zkey
+RUN mkdir /zk-email-verify/build/wallet_js
+RUN mkdir /zk-email-verify/build/wallet_cpp
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_js/generate_witness.js -o ./wallet_js/generate_witness.js
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_js/wallet.wasm -o ./wallet_js/wallet.wasm
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_js/wallet.wat -o ./wallet_js/wallet.wat
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_js/witness_calculator.js -o ./wallet_js/witness_calculator.js
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/calcwit.cpp -o ./wallet_cpp/calcwit.cpp
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/calcwit.hpp -o ./wallet_cpp/calcwit.hpp
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/circom.hpp -o ./wallet_cpp/circom.hpp
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/fr.asm -o ./wallet_cpp/fr.asm
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/fr.cpp -o ./wallet_cpp/fr.cpp
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/fr.hpp -o ./wallet_cpp/fr.hpp
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/main.cpp -o ./wallet_cpp/main.cpp
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/Makefile -o ./wallet_cpp/Makefile
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/wallet.cpp -o ./wallet_cpp/wallet.cpp
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_cpp/wallet.dat -o ./wallet_cpp/wallet.dat
 WORKDIR /zk-email-verify
+
 RUN yarn install
 
 # Clone the relayer repository at the latest commit and set it as the working directory
@@ -59,3 +67,4 @@ RUN git pull
 
 # Make necessary files executable
 RUN chmod +x /relayer/src/circom_proofgen.sh
+

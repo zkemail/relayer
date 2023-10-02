@@ -125,6 +125,9 @@ To hit it, take the resulting URL and hit
 curl 'https://ziztuww--aayush-test.modal.run?<query params>'
 ```
 
+## Debugging
+If an email fails, you can debug it by going to Modal -> https://modal.com/apps/ziztuww/aayush > pull_and_prove_email. 
+
 ## Server Setup
 
 We don't use this server anymore, but if you'd like to call these functions via endpoints, you can use this nginx setup.
