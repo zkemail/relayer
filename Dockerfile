@@ -1,3 +1,4 @@
+FROM aayushg0/rapidsnark:latest AS rapidsnark
 FROM rust:latest
 ARG ZKEMAIL_BRANCH_NAME=anon_wallet
 ARG RELAYER_BRANCH_NAME=modal_anon
@@ -13,11 +14,7 @@ RUN apt-get update && \
 
 RUN npm install -g yarn npx
  
-# Copy rapidsnark build folder from Docker Hub
-RUN docker pull aayushg0/rapidsnark:latest
-RUN docker create --name rapidsnark aayushg0/rapidsnark:latest
-RUN docker cp rapidsnark:/rapidsnark/build /rapidsnark/build
-RUN docker rm -v rapidsnark
+COPY --from=rapidsnark /rapidsnark/build /rapidsnark/build
 WORKDIR /rapidsnark/build
 RUN chmod +x /rapidsnark/build/prover
 
