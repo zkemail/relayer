@@ -12,32 +12,20 @@ RUN apt-get update && \
     apt install -y nodejs npm cmake build-essential pkg-config libssl-dev libgmp-dev libsodium-dev nasm awscli git tar
 
 RUN npm install -g yarn npx
-
-# Clone rapidsnark
-RUN git clone https://github.com/Divide-By-0/rapidsnark /rapidsnark
-WORKDIR /rapidsnark
-RUN git submodule init
-RUN git submodule update
-RUN yarn install
-RUN npx task createFieldSources
-RUN npx task buildPistache
-RUN npx task buildProver
+ 
+# Copy rapidsnark build folder from Docker Hub
+RUN docker pull aayushg0/rapidsnark:latest
+RUN docker create --name rapidsnark aayushg0/rapidsnark:latest
+RUN docker cp rapidsnark:/rapidsnark/build /rapidsnark/build
+RUN docker rm -v rapidsnark
+WORKDIR /rapidsnark/build
 RUN chmod +x /rapidsnark/build/prover
 
 # Clone zk email repository at the latest commit and set it as the working directory
 RUN git clone https://github.com/zkemail/zk-email-verify -b ${ZKEMAIL_BRANCH_NAME} /zk-email-verify
 RUN mkdir /zk-email-verify/build 
 WORKDIR /zk-email-verify/build
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkey
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyc
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyd
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeye
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyf
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyg
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyh
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyi
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyj
-RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet.zkeyk
+RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_nonchunked.zkey
 RUN mkdir /zk-email-verify/build/wallet_js
 RUN mkdir /zk-email-verify/build/wallet_cpp
 RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/wallet_js/generate_witness.js -o ./wallet_js/generate_witness.js
