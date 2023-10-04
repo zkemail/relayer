@@ -65,7 +65,7 @@ fn parse_files_into_calldata(
             Ok(_) => (),
             Err(e) => eprintln!("Failed to send email: {}", e),
         }
-        return Err(Error::new(std::io::Error::new(std::io::ErrorKind::NotFound, "File not found")));        return Err(Error::new(std::io::Error::new(std::io::ErrorKind::NotFound, "File not found")));
+        return Err(Error::new(std::io::Error::new(std::io::ErrorKind::NotFound, "File not found")));        
     }
     let proof_json: Value = serde_json::from_str(&fs::read_to_string(proof_dir).unwrap()).unwrap();
     let public_json: Value = serde_json::from_str(
