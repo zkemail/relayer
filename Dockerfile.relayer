@@ -21,6 +21,9 @@ RUN cargo +nightly chef prepare --recipe-path recipe.json
 FROM chef AS builder
 ARG RELAYER_BRANCH_NAME=production
 
+# Copy over our lock file
+COPY --from=planner  /app/recipe.json recipe.json
+
 # Clone the relayer repository at the latest commit and set it as the working directory
 RUN git clone --branch ${RELAYER_BRANCH_NAME} --single-branch https://github.com/zkemail/relayer /relayer
 WORKDIR /relayer
@@ -40,8 +43,6 @@ RUN cargo build --target x86_64-unknown-linux-gnu --release
 
 # Using super lightweight debian image to reduce overhead
 FROM debian:bullseye-slim AS runtime
-
-WORKDIR /app
 
 # Copy prebuild bin from the Builder stage
 COPY --from=builder /relayer/target/release/relayer /usr/local/bin/relayer
