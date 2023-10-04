@@ -16,13 +16,13 @@ COPY . .
 # Create a lockfile for cargo chef
 RUN cargo +nightly chef prepare --recipe-path recipe.json
 
-
 # ------------------ Builder stage -------------------
 FROM chef AS builder
 ARG RELAYER_BRANCH_NAME=production
 
 # Copy over our lock file
 COPY --from=planner  /app/recipe.json recipe.json
+COPY --from=planner  /app/recipe.json /relayer/recipe.json
 
 # Clone the relayer repository at the latest commit and set it as the working directory
 RUN git clone --branch ${RELAYER_BRANCH_NAME} --single-branch https://github.com/zkemail/relayer /relayer
