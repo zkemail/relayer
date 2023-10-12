@@ -13,6 +13,7 @@ FROM chef as planner
 
 # Copy files into container
 COPY Cargo.toml Cargo.lock ./
+COPY src ./src
 
 # Create a lockfile for cargo chef
 RUN cargo +nightly chef prepare --recipe-path recipe.json
