@@ -10,8 +10,9 @@ WORKDIR /app
 
 # ------------------ Planner stage -------------------
 FROM chef as planner
+
 # Copy files into container
-COPY . .
+COPY Cargo.toml Cargo.lock ./
 
 # Create a lockfile for cargo chef
 RUN cargo +nightly chef prepare --recipe-path recipe.json
