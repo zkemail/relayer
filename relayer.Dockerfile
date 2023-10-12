@@ -51,6 +51,7 @@ COPY --from=builder /relayer/Cargo.toml /relayer/Cargo.toml
 COPY --from=builder /relayer/Cargo.lock /relayer/Cargo.lock
 COPY --from=builder /relayer/proofs /relayer/proofs
 COPY --from=builder /relayer/received_eml /relayer/received_eml
+COPY --from=builder /relayer/src /relayer/src
 
 # This cargo chef logic comes from https://github.com/LukeMathWalker/cargo-chef
 # Inspired by Huff: https://github.com/huff-language/huff-rs/blob/main/Dockerfile

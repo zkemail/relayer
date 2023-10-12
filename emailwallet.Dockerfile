@@ -1,5 +1,5 @@
 FROM aayushg0/rapidsnark:latest AS rapidsnark
-FROM aayushg0/relayer:latest as relayer
+FROM aayushg0/relayer:v0 as relayer
 FROM rust:latest
 ARG ZKEMAIL_BRANCH_NAME=anon_wallet
 ARG CIRCUIT_NAME=wallet
