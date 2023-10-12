@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use imap::types::{Fetch, Fetches};
-use imap::{Authenticator, Client, Session};
+use imap::{Authenticator, Client, Session, ImapConnection};
 use native_tls::{self, TlsStream};
 use oauth2::reqwest::async_http_client;
 use oauth2::{
@@ -15,7 +15,7 @@ use std::slice::Iter;
 // We cache the domain name, port, and auth for reconnection on failure
 #[derive(Debug)]
 pub struct ImapClient {
-    imap_session: Session<TlsStream<TcpStream>>,
+    imap_session: Session<Box<dyn ImapConnection>>,
     domain_name: String,
     port: u16,
     auth: IMAPAuth,
@@ -59,7 +59,7 @@ impl ImapClient {
         let tls = native_tls::TlsConnector::builder().build()?;
         println!("Beginning connection process to IMAP server...");
         let client = imap::ClientBuilder::new(domain_name, port)
-            .native_tls()
+            .connect()  
             .expect("Could not connect to imap server");
         println!("IMAP client connected to {:?} {:?}", domain_name, client);
         let mut imap_session = match auth.clone() {
@@ -187,5 +187,4 @@ impl ImapClient {
         }
     }
 }
-
 
