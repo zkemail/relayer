@@ -28,7 +28,7 @@ chmod +x ../rapidsnark/build/prover
 ip -4 -o addr show scope global | awk '{print $4}' && ip -6 -o addr show scope global | awk '{print $4}' # Point the DNS to these raw IPs
 ```
 
-And make sure that the abi in ` abi/wallet.abi` is up to date.
+And make sure that the abi in `abi/wallet.abi` is up to date.
 
 ## Enable TLS/TCP Keepalive
 

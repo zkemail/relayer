@@ -26,8 +26,8 @@ RUN mkdir /zk-email-verify/build
 RUN mkdir /zk-email-verify/build/${CIRCUIT_NAME}
 WORKDIR /zk-email-verify/build/${CIRCUIT_NAME}
 RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/${CIRCUIT_NAME}_nonchunked.zkey -o ./${CIRCUIT_NAME}.zkey
-RUN mkdir /zk-email-verify/build/${CIRCUIT_NAME}_js
-RUN mkdir /zk-email-verify/build/${CIRCUIT_NAME}_cpp
+RUN mkdir /zk-email-verify/build/${CIRCUIT_NAME}/${CIRCUIT_NAME}_js
+RUN mkdir /zk-email-verify/build/${CIRCUIT_NAME}/${CIRCUIT_NAME}_cpp
 RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/${CIRCUIT_NAME}_js/generate_witness.js -o ./${CIRCUIT_NAME}_js/generate_witness.js
 RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/${CIRCUIT_NAME}_js/${CIRCUIT_NAME}.wasm -o ./${CIRCUIT_NAME}_js/${CIRCUIT_NAME}.wasm
 RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/${CIRCUIT_NAME}_js/${CIRCUIT_NAME}.wat -o ./${CIRCUIT_NAME}_js/${CIRCUIT_NAME}.wat
