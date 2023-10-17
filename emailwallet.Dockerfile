@@ -12,7 +12,7 @@ RUN apt-get update && apt-get upgrade -y
 
 # Update the package list and install necessary dependencies
 RUN apt-get update && \
-    apt install -y nodejs npm cmake build-essential pkg-config libssl-dev libgmp-dev libsodium-dev nasm awscli git tar
+    apt install -y nodejs npm cmake build-essential pkg-config libssl-dev libgmp-dev libsodium-dev nasm git
 
 RUN npm install -g yarn npx
  
@@ -49,7 +49,6 @@ RUN yarn install
 # Clone the relayer repository at the latest commit and set it as the working directory
 
 COPY --from=relayer /relayer /relayer
-WORKDIR /relayer/target
 RUN chmod +x /relayer/target/release/relayer
 
 # Make necessary files executable
