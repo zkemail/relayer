@@ -147,7 +147,7 @@ def upload_file_to_s3(local_file_path, bucket_name, nonce):
     return s3_url.replace("[nonce]", nonce)
 
 
-# # --------- MODAL CLOUD COORDINATOR ------------
+# # --------- MODAL CLOUD COORDINATOR (MOVED TO COMMON.PY) ------------
 # image = modal.Image.from_registry(
 #     "aayushg0/zkemail-image-updated:modal",
 #     setup_dockerfile_commands=["RUN apt-get install -y python3 python-is-python3 python3-pip", "RUN cp -r /rapidsnark /root/rapidsnark",
