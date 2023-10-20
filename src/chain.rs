@@ -4,12 +4,13 @@
 
 use dotenv::dotenv;
 use ethers::abi::Abi;
-// use ethers::contract::ContractError;
+use ethers::utils::id;
 use ethers::prelude::*;
 use anyhow::{Error};
 use ethers::core::types::{Address, U256, H160, H256};
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
+use hex::encode;
 use crate::strings::{reply_with_etherscan, recipient_intro_body, recipient_intro_subject};
 use crate::config::{INCOMING_EML_PATH, ETHERSCAN_KEY, LOGIN_ID_KEY, LOGIN_PASSWORD_KEY, SMTP_DOMAIN_NAME_KEY};
 use crate::smtp_client::EmailSenderClient;
@@ -355,7 +356,7 @@ fn send_final_recipient_intro(nonce: &str, reply: &str, new_subject: &str, send_
     let confirmation_recipient = sender.send_new_email(intro_subject.as_str(), intro_body.as_str(), &recipient);
     match confirmation_recipient {
         Ok(_) => println!("Confirmation email sent successfully to recipient."),
-        Err(e) => println!("Error sending confirmation email: {}", e),
+        Err(e) => println!("Error sending confirmation email to final: {}", e),
     }
 
     let confirmation = sender.send_new_email(&new_subject,&raw_email, &reply);
@@ -373,6 +374,8 @@ pub async fn query_address(
     let logic_contract = ContractInstance::new(logic_contract_address, abi, signer);
     let decimal_salt_u256 = U256::from_dec_str(&user_salt)?;
     let address_method = logic_contract.method::<_, Address>("getOrCreateWallet", decimal_salt_u256)?;
+    println!("Decimal salt: {:?}", decimal_salt_u256);
+    println!("Calldata: {:?}", address_method.calldata());
     let address = address_method.call().await?;
     Ok(address)
 }

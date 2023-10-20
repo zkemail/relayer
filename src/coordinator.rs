@@ -185,8 +185,11 @@ pub async fn calculate_decimal_salt(email_address: &str, message_id: &str) -> Re
 
 pub async fn calculate_address(email_address: &str, message_id: &str) -> Result<String> {
     let decimal_salt = calculate_decimal_salt(email_address, message_id).await?;
+    println!("Decimal salt: {}", decimal_salt);
     let address_raw = query_address(false, decimal_salt.as_str()).await?;
+    println!("address_raw: {}", address_raw);
     let address = format!("0x{:x}", address_raw);
+    println!("address: {}", address);
     Ok(address)
 }
 

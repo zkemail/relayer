@@ -3,9 +3,7 @@ FROM aayushg0/relayer:v0 as relayer
 FROM rust:latest
 ARG ZKEMAIL_BRANCH_NAME=anon_wallet
 ARG CIRCUIT_NAME=wallet
-ARG RELAYER_BRANCH_NAME=modal_anon
-ARG REFRESH_ZK_EMAIL=0
-ARG REFRESH_RELAYER=0
+# ARG RELAYER_BRANCH_NAME=modal_anon
 ARG ZKEMAIL_COMMIT=e6592d86cb200d98d46db62d63404e7214a11569
 
 RUN apt-get update && apt-get upgrade -y 
@@ -45,6 +43,7 @@ RUN curl -L https://zkemail-zkey-chunks.s3.amazonaws.com/${ZKEMAIL_COMMIT}/${CIR
 WORKDIR /zk-email-verify
 
 RUN yarn install
+RUN yarn add tsx psl
 
 # Clone the relayer repository at the latest commit and set it as the working directory
 

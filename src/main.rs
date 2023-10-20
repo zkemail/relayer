@@ -211,8 +211,10 @@ async fn run_relayer() -> Result<()> {
                     println!("Fetch internal date: {:?}", fetch.internal_date());
                     println!("Fetch UID: {:?}", fetch.uid);
                     println!("Fetch envelope: {:?}", fetch.envelope());
-
+                    
                     let raw_header = std::str::from_utf8(fetch.header().unwrap_or(&[]))?;
+                    println!("Raw header: {:?}", raw_header);
+
                     let from_addr = extract_from(&raw_header.to_string()).unwrap_or("".to_string());
                     let subject_str =
                         extract_subject(&raw_header.to_string()).unwrap_or("".to_string());

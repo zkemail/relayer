@@ -9,8 +9,8 @@ image = (
             "RUN cp -r /relayer /root/relayer",
             "RUN cp -r /zk-email-verify /root/zk-email-verify"
         ],
-        add_python="3.10"
-        # force_build=True,
+        add_python="3.10",
+        force_build=True
     )
     .pip_install_from_requirements("requirements.txt")
 )
