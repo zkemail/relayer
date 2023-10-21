@@ -43,7 +43,7 @@ RUN cargo build --target x86_64-unknown-linux-gnu --release
 # ------------------ Runtime stage -------------------
 
 # Using super lightweight debian image to reduce overhead
-FROM debian:bullseye-slim AS runtime
+FROM ubuntu:latest AS runtime
 
 # Copy prebuild bin from the Builder stage
 COPY --from=builder /relayer/target/release/relayer /usr/local/bin/relayer
