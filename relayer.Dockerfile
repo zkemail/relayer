@@ -1,6 +1,6 @@
 # ------------------ Chef stage -------------------
 # Use cargo chef to cache dependencies
-FROM rustlang/rust:nightly AS chef
+FROM rustlang/rust:latest AS chef
 
 # Install cargo chef
 RUN cargo install cargo-chef 
@@ -30,8 +30,6 @@ WORKDIR /relayer
 COPY --from=planner  /app/recipe.json /relayer/recipe.json
 
 # Build for any AWS machine. Same as cargo build but caches dependencies with the chef to make builds faster.
-RUN cargo chef cook --target x86_64-unknown-linux-gnu --recipe-path recipe.json
-RUN cp /relayer/target/x86_64-unknown-linux-gnu/debug/relayer /relayer/target/debug/
 RUN cargo chef cook --target x86_64-unknown-linux-gnu --release --recipe-path recipe.json
 RUN cp /relayer/target/x86_64-unknown-linux-gnu/release/relayer /relayer/target/release/
 
