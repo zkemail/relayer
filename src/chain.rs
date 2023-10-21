@@ -254,7 +254,7 @@ pub async fn send_to_chain(
     let sender_address = signer_raw.address().clone();
     let signer = signer_raw.nonce_manager(sender_address);
 
-    let gas_price = get_gas_price(force_localhost).await.unwrap();
+    let gas_price = get_gas_price(force_localhost).await.unwrap_or(50.into());
 
     // Read proof and public parameters from JSON files
     let calldata = get_calldata(Some(dir), Some(nonce)).unwrap();

@@ -51,19 +51,29 @@ echo "✓ Finished witness gen with js! ${status_jswitgen}"
 #     exit 1
 # fi
 
-echo "ldd ${HOME}/rapidsnark/build/prover"
-ldd "${HOME}/rapidsnark/build/prover"
-status_lld=$?
-echo "✓ lld prover dependencies present! ${status_lld}"
+if [ "$PROVER_LOCATION" = "local" ]; then
+    # DEFAULT SNARKJS PROVER (SLOW)
+    NODE_OPTIONS='--max-old-space-size=644000' ./node_modules/.bin/snarkjs groth16 prove "${build_dir}/${CIRCUIT_NAME}.zkey" "${witness_path}" "${proof_path}" "${public_path}"
+    status_prover=$?
+    echo "✓ Finished slow proofgen! Status: ${status_prover}"
+else
+    # RAPIDSNARK PROVER (10x FASTER)
+    echo "ldd ${HOME}/rapidsnark/build/prover"
+    ldd "${HOME}/rapidsnark/build/prover"
+    status_lld=$?
+    echo "✓ lld prover dependencies present! ${status_lld}"
 
-echo "${HOME}/rapidsnark/build/prover ${build_dir}/${CIRCUIT_NAME}.zkey ${witness_path} ${proof_path} ${public_path}"
-"${HOME}/rapidsnark/build/prover" "${build_dir}/${CIRCUIT_NAME}.zkey" "${witness_path}" "${proof_path}" "${public_path}"  | tee /dev/stderr
-status_prover=$?
-echo "✓ Finished proofgen! Status: ${status_prover}"
+    echo "${HOME}/rapidsnark/build/prover ${build_dir}/${CIRCUIT_NAME}.zkey ${witness_path} ${proof_path} ${public_path}"
+    "${HOME}/rapidsnark/build/prover" "${build_dir}/${CIRCUIT_NAME}.zkey" "${witness_path}" "${proof_path}" "${public_path}"  | tee /dev/stderr
+    status_prover=$?
+    echo "✓ Finished rapid proofgen! Status: ${status_prover}"
+fi
+
+
 
 # TODO: Upgrade debug -> release and edit dockerfile to use release
 echo "${HOME}/relayer/target/release/relayer chain false ${prover_output_path} ${nonce}"
-"${HOME}/relayer/target/release/relayer" chain false "${prover_output_path}" "${nonce}"  | tee /dev/stderr    
+"${HOME}/relayer/target/release/relayer" chain false "${prover_output_path}" "${nonce}" 2>&1 | tee /dev/stderr    
 status_chain=$?
 echo "✓ Finished send to chain! Status: ${status_chain}"
 

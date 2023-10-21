@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
 
                     let dir = &args[3];
                     let nonce = &args[4];
-
+                    println!("Sending to chain!");
                     chain::send_to_chain(force_localhost, dir, nonce).await?;
                 };
                 Ok(())

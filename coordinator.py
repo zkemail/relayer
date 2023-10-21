@@ -184,8 +184,11 @@ def pull_and_prove_email(aws_url: str, nonce: str):
     # Print the output of the 'proofgen' command
     new_env = os.environ.copy()
     print(new_env)
-    subprocess.run(["/relayer/src/circom_proofgen.sh", nonce], text=True, env=new_env, cwd='/root/zk-email-verify')
-    return
+    result = subprocess.run(["/relayer/src/circom_proofgen.sh", nonce], text=True, env=new_env, cwd='/root/zk-email-verify')
+    if result.returncode == 0:
+        return "Execution successful"
+    else:
+        return "Execution failed"
 
 # --------- LOCAL COORDINATOR ------------
 
