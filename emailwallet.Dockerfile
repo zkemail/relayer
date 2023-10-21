@@ -9,8 +9,7 @@ ARG ZKEMAIL_COMMIT=e6592d86cb200d98d46db62d63404e7214a11569
 RUN apt-get update && apt-get upgrade -y 
 
 # Update the package list and install necessary dependencies
-RUN apt-get update && \
-    apt install -y nodejs npm cmake build-essential pkg-config libssl-dev libgmp-dev libsodium-dev nasm git awscli
+RUN apt-get update && apt install -y nodejs npm git awscli
 
 RUN npm install -g yarn npx
  

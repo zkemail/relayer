@@ -48,9 +48,9 @@ else:
 
 # ----------- ENV VARIABLES ------------
 
-env_example_path = "./.env.example"
-if os.path.isfile(env_example_path):
-    def get_variable_names_from_env_file(file_path=env_example_path):
+env = "./.env"
+if os.path.isfile(env):
+    def get_variable_names_from_env_file(file_path=env):
         variable_names = []
         with open(file_path) as file:
             for line in file:
@@ -66,12 +66,14 @@ if os.path.isfile(env_example_path):
     additional_vars = get_variable_names_from_env_file()
     env_credentials = {}
     load_dotenv()  # Load environment variables from .env file
+    # TODO: Make all env vars work more robustly. Make specific to just the relevant path variables
+    # Replace all env vars with LOCAL_{NAME} so that the paths align. 
     for var_name in additional_vars:
         # If it doesnt start with local
         if not var_name.startswith("LOCAL_"):
             var_value = os.getenv(var_name)
             if var_value is not None:
-                # TODO: Make this cleaner; remove all uses of a non local/modal path env var
+                # TODO: Make this cleaner; remap the modal_ var to the local_ var
                 env_credentials[var_name] = var_value
                 var_name = var_name.replace("MODAL_", "")
                 env_credentials[var_name] = var_value
@@ -175,14 +177,14 @@ def prove_email(file_contents: str, nonce: str):
 # Create and deploy the secret containing AWS credentials and additional environment variables
 stub['credentials_secret'] = modal.Secret.from_dict(merged_credentials)
 
-
 @stub.function(cpu=14, memory=6000, secret=stub['credentials_secret'])
 @modal.web_endpoint(method="POST")
 def pull_and_prove_email(aws_url: str, nonce: str):
     download_and_write_file(aws_url, nonce)
     # Print the output of the 'proofgen' command
     new_env = os.environ.copy()
-    subprocess.run(["/relayer/src/circom_proofgen.sh", nonce], text=True, env=new_env)
+    print(new_env)
+    subprocess.run(["/relayer/src/circom_proofgen.sh", nonce], text=True, env=new_env, cwd='/root/zk-email-verify')
     return
 
 # --------- LOCAL COORDINATOR ------------
