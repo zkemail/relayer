@@ -20,7 +20,7 @@ RUN cargo +nightly chef prepare --recipe-path recipe.json
 
 # ------------------ Builder stage -------------------
 FROM chef AS builder
-ARG RELAYER_BRANCH_NAME=production
+ARG RELAYER_BRANCH_NAME=v0
 
 # Clone the relayer repository at the latest commit and set it as the working directory
 RUN git clone --branch ${RELAYER_BRANCH_NAME} --single-branch https://github.com/zkemail/relayer /relayer
