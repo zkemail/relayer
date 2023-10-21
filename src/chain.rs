@@ -319,8 +319,9 @@ fn reply_with_message(nonce: &str, reply: &str, send_to_recipient: bool) {
 
     // Read raw email from received_eml/wallet_{nonce}.eml
     let eml_var = env::var(INCOMING_EML_PATH).unwrap();
-
-    let raw_email = fs::read_to_string(format!("{}/wallet_{}.eml", eml_var, nonce)).unwrap();
+    let path = format!("{}/wallet_{}.eml", eml_var, nonce);
+    println!("Fetching eml from path {:?}", path);
+    let raw_email = fs::read_to_string(path).unwrap();
     let confirmation = sender.reply_all(&raw_email, &reply, send_to_recipient);
 }
 
