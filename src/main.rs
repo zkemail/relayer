@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
 
                     let dir = &args[3];
                     let nonce = &args[4];
-
+                    println!("Sending to chain!");
                     chain::send_to_chain(force_localhost, dir, nonce).await?;
                 };
                 Ok(())
@@ -202,42 +202,7 @@ async fn run_relayer() -> Result<()> {
                     };
                     email_queue.push_back(email_data);
                 } else {
-                    // If there's no body, parse those fields out of the raw header data instead
-                    // TODO: Fetch.header is None but the email is printed so it's there somewhere
-                    // Print all the fields on fetch
-                    // Wrap the code in a try-catch block to handle potential non-existent fields
-                    println!("Fetch flags: {:?}", fetch.flags());
-                    println!("Fetch body structure: {:?}", fetch.bodystructure());
-                    println!("Fetch internal date: {:?}", fetch.internal_date());
-                    println!("Fetch UID: {:?}", fetch.uid);
-                    println!("Fetch envelope: {:?}", fetch.envelope());
-
-                    let raw_header = std::str::from_utf8(fetch.header().unwrap_or(&[]))?;
-                    let from_addr = extract_from(&raw_header.to_string()).unwrap_or("".to_string());
-                    let subject_str =
-                        extract_subject(&raw_header.to_string()).unwrap_or("".to_string());
-                    println!("From address if broken: {}", from_addr);
-                    println!("Subject if broken: {}", subject_str);
-
-                    // Insert the email into the database with Unvalidated status
-                    let hash = calculate_hash(&raw_header.to_string());
-                    set_email_state(
-                        &raw_header.to_string(),
-                        &from_addr,
-                        &subject_str,
-                        ValidationStatus::Unvalidated,
-                    )
-                    .await?;
-
-                    // Generate unvalidated EmailData and push it to the validation queue for further processing
-                    let email_data = EmailData {
-                        body: raw_header.to_string(),
-                        from: from_addr.clone(),
-                        subject: subject_str.clone(),
-                        state: ValidationStatus::Unvalidated,
-                    };
-                    email_queue.push_back(email_data);
-                    break;
+                    println!("For some reason, each email is parsed twice, and this is the failed parse.")
                 }
             }
         }
