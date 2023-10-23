@@ -18,7 +18,7 @@ pub fn bad_message_id() -> String {
 pub fn reply_with_etherscan(tx_hash: H256) -> String {
     let etherscan_url = format!("https://goerli.etherscan.io/tx/0x{:x}", tx_hash);
     let reply = format!(
-        "Transaction sent! View Etherscan confirmation: {}. Spot the transfer of the ERC20 for the amount you specified!",
+        "Transaction sent! View Etherscan confirmation: {}. Under 'ERC20 Tokens Transferred', you'll see transactions in which we give each new wallet 100 tokens, and the last line shows your tokens moving between the two accounts.",
         etherscan_url
     );
     println!("Replying with confirmation...{}", reply);
@@ -55,10 +55,10 @@ pub async fn pending_reply(address: &str, amount: &str, currency: &str, recipien
 
     format!(
         "{} \
-        We will follow up with {} Etherscan link when finished! \n \nYou are sending with ZK email technology. \
-        The relayer will automatically prove, on-chain, that you sent an email authorizing this transaction. \
-        We will automatically deploy wallets for new users, controllable only by that email address and domain (we can't steal your assets!). \
-        While we're in beta, we've given each address 10 'TEST' tokens to try out free transfers.",
+        We will follow up with {} Etherscan link when finished. \n \nYou are sending using zk email (prove.email). \
+        The relayer will prove on-chain that you sent an email authorizing this transaction. \
+        We will automatically deploy a wallets for each new user, controlled only by that new user's email address and domain (we can't steal your assets!). \
+        While we're in beta, we transfer you 100 'TEST' tokens to try out free transfers.",
         balance_detected_message, CHAIN
     )
 }
