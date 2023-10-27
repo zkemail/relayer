@@ -185,17 +185,8 @@ def pull_and_prove_email(aws_url: str, nonce: str):
     # Define the command as a list of strings
     command = ["sh", "/relayer/src/circom_proofgen.sh", nonce]
 
-    # Start the subprocess
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=new_env, cwd='/root/zk-email-verify')
-
-    # Print the subprocess output line by line
-    for line in iter(process.stdout.readline, b''):
-        if line.strip():  # This will be False for empty lines and lines with only whitespace
-            print(line.strip())
-    
-    # Wait for the process to end and get the exit code
-    exit_code = process.wait()
-    if exit_code == 0: return "Execution successful"
+    result = subprocess.run(command, text=True, env=new_env, cwd='/root/zk-email-verify')
+    if result.returncode == 0: return "Execution successful"
     else: return "Execution failed"
 
 # --------- LOCAL COORDINATOR ------------
