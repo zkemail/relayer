@@ -319,8 +319,9 @@ fn reply_with_message(nonce: &str, reply: &str, send_to_recipient: bool) {
 
     // Read raw email from received_eml/wallet_{nonce}.eml
     let eml_var = env::var(INCOMING_EML_PATH).unwrap();
-
-    let raw_email = fs::read_to_string(format!("{}/wallet_{}.eml", eml_var, nonce)).unwrap();
+    let path = format!("{}/wallet_{}.eml", eml_var, nonce);
+    println!("Fetching eml from path {:?}", path);
+    let raw_email = fs::read_to_string(path).unwrap();
     let confirmation = sender.reply_all(&raw_email, &reply, send_to_recipient);
 }
 
@@ -413,7 +414,7 @@ pub async fn query_balance(
     // Calculate the balance in tokens by dividing the raw balance by 10 to the power of the decimal count
     let balance: f64 = raw_balance.low_u64() as f64 / 10f64.powi(decimals.as_u32() as i32);
     if token_name == "TEST" && balance == 0.0 {
-        return Ok(10.0);
+        return Ok(100.0);
     }
     Ok(balance)
 }

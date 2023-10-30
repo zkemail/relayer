@@ -1,6 +1,6 @@
 # ------------------ Chef stage -------------------
 # Use cargo chef to cache dependencies
-FROM rustlang/rust:latest AS chef
+FROM rustlang/rust:nightly AS chef
 
 # Install cargo chef
 RUN cargo install cargo-chef 

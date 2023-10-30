@@ -51,7 +51,8 @@ echo "✓ Finished witness gen with js! ${status_jswitgen}"
 #     exit 1
 # fi
 
-if [ "$PROVER_LOCATION" = "local" ]; then
+# ldd on Mac doesn't work
+if [ "$PROVER_LOCATION" = "local" ] && [ "$(uname)" = "Darwin" ]; then
     # DEFAULT SNARKJS PROVER (SLOW)
     NODE_OPTIONS='--max-old-space-size=644000' ./node_modules/.bin/snarkjs groth16 prove "${build_dir}/${CIRCUIT_NAME}.zkey" "${witness_path}" "${proof_path}" "${public_path}"
     status_prover=$?
@@ -69,9 +70,9 @@ else
     echo "✓ Finished rapid proofgen! Status: ${status_prover}"
 fi
 
-
-
 # TODO: Upgrade debug -> release and edit dockerfile to use release
+chmod 644 "${wallet_eml_path}"
+
 echo "${HOME}/relayer/target/release/relayer chain false ${prover_output_path} ${nonce}"
 "${HOME}/relayer/target/release/relayer" chain false "${prover_output_path}" "${nonce}" 2>&1 | tee /dev/stderr    
 status_chain=$?

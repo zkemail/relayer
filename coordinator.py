@@ -148,7 +148,6 @@ def upload_file_to_s3(local_file_path, bucket_name, nonce):
 
     return s3_url.replace("[nonce]", nonce)
 
-
 # # --------- MODAL CLOUD COORDINATOR (MOVED TO COMMON.PY) ------------
 # image = modal.Image.from_registry(
 #     "aayushg0/zkemail-image-updated:modal",
@@ -157,7 +156,6 @@ def upload_file_to_s3(local_file_path, bucket_name, nonce):
 #                                "RUN cp -r /relayer /root/relayer",
 #                                "RUN cp -r /zk-email-verify /root/zk-email-verify"], force_build=True).pip_install_from_requirements("requirements.txt")
 # stub = modal.Stub(image=image)
-
 
 @stub.function(cpu=4, image=image)
 def prove_email(file_contents: str, nonce: str):
@@ -183,12 +181,13 @@ def pull_and_prove_email(aws_url: str, nonce: str):
     download_and_write_file(aws_url, nonce)
     # Print the output of the 'proofgen' command
     new_env = os.environ.copy()
-    print(new_env)
-    result = subprocess.run(["/relayer/src/circom_proofgen.sh", nonce], text=True, env=new_env, cwd='/root/zk-email-verify')
-    if result.returncode == 0:
-        return "Execution successful"
-    else:
-        return "Execution failed"
+    
+    # Define the command as a list of strings
+    command = ["sh", "/relayer/src/circom_proofgen.sh", nonce]
+
+    result = subprocess.run(command, text=True, env=new_env, cwd='/root/zk-email-verify')
+    if result.returncode == 0: return "Execution successful"
+    else: return "Execution failed"
 
 # --------- LOCAL COORDINATOR ------------
 
