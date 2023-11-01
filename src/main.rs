@@ -298,7 +298,7 @@ async fn process_email(
                                 {
                                     Ok(balance) => {
                                         let cloned_amount = amount.clone();
-                                        println!("Balance of address {}: {}", address, balance);
+                                        println!("Balance of address {}: {} {}", address, balance, token_name);
                                         let amount_f64 =
                                             cloned_amount.parse::<f64>().unwrap_or_else(|_| 0.0);
                                         balance >= amount_f64
