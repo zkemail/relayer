@@ -18,7 +18,9 @@ pub fn bad_message_id() -> String {
 pub fn reply_with_etherscan(tx_hash: H256) -> String {
     let etherscan_url = format!("https://goerli.etherscan.io/tx/0x{:x}", tx_hash);
     let reply = format!(
-        "Transaction sent! View Etherscan confirmation: {}. Under 'ERC20 Tokens Transferred', you'll see transactions in which we give each new wallet 100 tokens, and the last line shows your tokens moving between the two accounts.",
+        "Transaction sent! View Etherscan confirmation: {}. \n \n
+        If either email address is new, we've assigned them an address on-chain, controlled only by that email (your email address is not leaked on-chain). \n \n
+        Under 'ERC20 Tokens Transferred', you'll see transactions in which we give each new wallet 100 tokens, and the last line shows your tokens moving between the two accounts.",
         etherscan_url
     );
     println!("Replying with confirmation...{}", reply);
@@ -37,13 +39,16 @@ pub async fn pending_reply(address: &str, amount: &str, currency: &str, recipien
             enough_balance = balance >= amount.parse().unwrap();
             let remaining = balance - amount.parse::<f64>().unwrap();
             
-            let enough_balance_str = if enough_balance {
-                format!("Your wallet {} has {} {}. The transaction will send {} {} to {} and your remaining balance will be {} {}.", address, balance, currency, amount, currency, recipient, remaining, currency)
-            } else {
-                format!("Created new wallet for you at {} -- in order to send this transaction, you must add at least {} {} to send. \
-                The send has been queued and will execute once enough balance is detected, then automatically send {} {} to {}.",
-                address, amount, currency, amount, currency, recipient)
-            };
+            let enough_balance_str = 
+                if (currency == "TEST" && remaining == 100.0) {
+                    format!("Created new wallet for you at {}, controlled by your emails. Your email address is not leaked on-chain. It has {} {}, and the transaction will send {} {} to {} and your remaining balance will be {} {}.", address, balance, currency, amount, currency, recipient, remaining, currency)                
+                } else if enough_balance {
+                    format!("Your wallet {} has {} {}. The transaction will send {} {} to {} and your remaining balance will be {} {}.", address, balance, currency, amount, currency, recipient, remaining, currency)
+                } else {
+                    format!("Created new wallet for you at {} -- in order to send this transaction, you must add at least {} {} to send. \
+                    The send has been queued and will execute once enough balance is detected, then automatically send {} {} to {}.",
+                    address, amount, currency, amount, currency, recipient)
+                };
             enough_balance_str
         },
         Err(_) => {
@@ -55,7 +60,7 @@ pub async fn pending_reply(address: &str, amount: &str, currency: &str, recipien
 
     format!(
         "{} \
-        We will follow up with {} Etherscan link when finished. \n \nYou are sending using zk email (prove.email). \
+        We will follow up with {} Etherscan link in about a minute when finished. \n \nYou are sending using zk email (https://prove.email). \
         The relayer will prove on-chain that you sent an email authorizing this transaction. \
         We will automatically deploy a wallets for each new user, controlled only by that new user's email address and domain (we can't steal your assets!). \
         While we're in beta, we transfer you 100 'TEST' tokens to try out free transfers.",
