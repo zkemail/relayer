@@ -411,8 +411,11 @@ pub async fn query_balance(
         .call()
         .await?;
 
-    // Calculate the balance in tokens by dividing the raw balance by 10 to the power of the decimal count
-    let balance: f64 = raw_balance.low_u64() as f64 / 10f64.powi(decimals.as_u32() as i32);
+    let decimals_u256 = U256::from(decimals.low_u64());
+    let divisor = U256::from(10).pow(decimals_u256);
+    let balance_u256 = raw_balance / divisor;
+    let balance: f64 = balance_u256.low_u64() as f64;
+    
     if token_name == "TEST" && balance == 0.0 {
         return Ok(100.0);
     }
@@ -432,6 +435,22 @@ mod test {
         match balance {
             Ok(bal) => {
                 assert!(bal > 0.0, "Balance must be more than 0");
+            },
+            Err(e) => {
+                println!("Error: {:?}", e);
+                assert!(false, "Error getting balance");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_query_balance_0xee() {
+        dotenv::dotenv().ok();
+        let balance = query_balance(false, "0xeede835a3a8ab64193a379d1ebbe528201d90f29", "TEST").await;
+
+        match balance {
+            Ok(bal) => {
+                assert!(bal > 90.0, "Balance must be more than 90");
             },
             Err(e) => {
                 println!("Error: {:?}", e);
