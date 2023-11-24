@@ -1,5 +1,7 @@
 # Relayer
 
+This is the V0 relayer which is now deprecated and replaced by email-wallet/packages/relayer which has the V1 relayer.
+
 A permissionless Rust IMAP + SMTP server that reads email via imap, creates zk proofs of it, and replies to it. Uses IMAP to receive email and SMTP to send replies.
 
 Goerli Wallet Address (circom-only): 0x3b3857eaf44804cce00449b7fd40310e6de6496e
