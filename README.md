@@ -1,6 +1,6 @@
 # Relayer
 
-This is the V0 relayer which is now deprecated and replaced by email-wallet/packages/relayer which has the V1 relayer.
+This is the **DEPRECATED** V0 relayer. The code has since been upgraded to [email-wallet/packages/relayer](https://github.com/zkemail/email-wallet/tree/main/packages/relayer), which is the V1 relayer.
 
 A permissionless Rust IMAP + SMTP server that reads email via imap, creates zk proofs of it, and replies to it. Uses IMAP to receive email and SMTP to send replies.
 
